@@ -1,0 +1,62 @@
+unix-options (C) 2009 Andrew Stine
+
+This software is distributed under the terms of the Lisp Lesser GNU 
+Public License (http://opensource.franz.com/preamble.html), also 
+known as the LLGPL. 
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+----------------------------------------------------------------------
+
+Unix-options is a small Common Lisp library for parsing unix-style 
+command line options. 
+
+This library is very new and not widely tested so suggestions, 
+bug-reports and patches (including changes to this document) are
+welcome.
+
+Please send any feedback to astine (at) beggersandbuskers dot com
+
+----------------------------------------------------------------------
+Usage:
+ 
+The library can be loaded through ASDF and used through the package 
+'unix-options.'
+
+Exported symbols are:
+
+*cli-options* - bound to the list of whitspace separated tokens passed
+                on the command line.
+		
+getopt - Given a list of cli tokens, parses and separates the options
+         into there canonical format: 
+	 -a -b -c --parameter p-value -- file1 file2 file3
+	 for example:
+	 (getopt '("-af" "fil.txt" "--longopt" "fil2.txt" "fil3.txt")
+                 "af:s" '("longopt="))
+	 => '("a" "f" "fil.txt" "longopt" "fil2.txt" "--" "fil3.txt")
+	 Appending a short style option with a colon tells the parser
+  	 to look for values associated with it. Appending a long option
+	 with a "=" tells the parser the same thing.
+
+with-cli-options - Bind the values passing on the cli to a list of
+		   places provided by the user. For example:
+		   (with-cli-options (*cli-options* files)
+		       (option1 option2 &file-parameters option3)
+		     ...)
+		   Option1 and option2 will either be true or nil 
+		   depending on whether they were passed on the cli
+		   and option3 will be either nil, if not passed, or
+		   the value of whatever string it was passed.
+
+do-parsed-options - Macro meant for backend processing of options but
+		    provided to grant the user more flexibility in
+		    using the library.
+
+For more information, please see the source code.
