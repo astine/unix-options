@@ -68,7 +68,7 @@
    -- body: the code that operates on the key/value pairs; The code in this block is
            executed for every found option name and it associated value (always true
            for boolean parameters) bound to 'option' and 'value' respectively.
-  'Do-parsed-options' is meant as a backend for convenient option parsing mechanisms such
+  'Do-parsed-options' is meant as a backend for more convenient option parsing mechanisms such
    as 'with-cli-options' and 'getopts'."
   (with-gensyms (option options)
     (labels ((dispatch-on-option (option bool-case file-case) ;;a bit of code to determine whether an option is a boolean, file, or invalid.
