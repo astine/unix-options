@@ -17,6 +17,7 @@
 (defpackage #:unix-options
   (:use #:cl)
   (:export #:*cli-options*
+           #:&file-parameters
 	   #:do-parsed-options
 	   #:with-cli-options
 	   #:getopt))
