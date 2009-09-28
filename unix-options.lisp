@@ -18,6 +18,7 @@
   (:use #:cl)
   (:export #:*cli-options*
            #:&file-parameters
+           #:&free
 	   #:do-parsed-options
 	   #:with-cli-options
 	   #:getopt))
@@ -48,11 +49,11 @@
 	 ,@body))
 
 (defvar *cli-options*
-  #+:SBCL sb-ext:*posix-argv*
-  #+:CCL *command-line-argument-list*
-  #+:CLISP ext:*args*
-  #+:LISPWORKS system:*line-arguments-list*
-  #+:CMU extensions:*command-line-words*
+  #+:SBCL (rest sb-ext:*posix-argv*)
+  #+:CCL (rest *command-line-argument-list*)
+  #+:CLISP (rest ext:*args*)
+  #+:LISPWORKS (rest system:*line-arguments-list*)
+  #+:CMU (rest extensions:*command-line-words*)
   "list of tokens passed in at the cli"
  )
 
@@ -107,7 +108,7 @@
 			 `(let ((value (pop ,options))) ,@body)))
 		      (t (push ,option ,files)))))))))
 
-(defmacro with-cli-options ((&optional (cli-options *cli-options*) (files 'files)) option-variables &body body)
+(defmacro with-cli-options ((&optional (cli-options *cli-options*)) option-variables &body body)
   "The macro automatically binds passed in command line options to a set of user defined variable names.
 
    The list 'option-variables' contains a list of names to which 'with-cli-options' can bind the cli
@@ -119,31 +120,36 @@
 	(file-params nil)
 	(var-bindings nil)
 	(var-setters nil)
-	(file-vars? nil))
+	(file-vars? nil)
+	(files nil))
     ;;loop over the symbols in option-variables filling the bool and file parameter lists and
     ;;generating the code forms for binding and assigning value to the variables
-    (dolist (symbol option-variables)
-      (if (eql symbol '&file-parameters)
-	  (setf file-vars? t)
-	  (flet ((so-not-used? (so) ;'so' = 'short option'
-		   (unless (or (find so bool-params :test #'equal) 
-			       (find so file-params :test #'equal))
-		     so)))
-	    (let ((long-option (string-downcase (symbol-name symbol)))
-		  (short-option (aif (so-not-used? (string-downcase (subseq (symbol-name symbol) 0 1)))
-				  it
-				  (so-not-used? (subseq (symbol-name symbol) 0 1))))) ;if downcase shortopt is used; attempt upcase one
-	      (push `(,symbol nil) var-bindings)
-	      (push `((or (equal option ,long-option) ,(if short-option `(equal option ,short-option)))
-		      (setf ,symbol value))
-		    var-setters)
-	      (if file-vars?
-		  (progn (push long-option file-params)
-			 (if short-option (push short-option file-params)))
-		  (progn (push long-option bool-params)
-			 (if short-option (push short-option bool-params))))))))
+    (block nil 
+      (dolist (symbol option-variables)
+        (cond ((eql symbol '&file-parameters)
+	       (setf file-vars? t))
+              ((eql symbol '&free)
+               (setf files (car (last option-variables)))
+               (return))
+	      (t (flet ((so-not-used? (so) ;'so' = 'short option'
+		         (unless (or (find so bool-params :test #'equal) 
+			             (find so file-params :test #'equal))
+		           so)))
+	          (let ((long-option (string-downcase (symbol-name symbol)))
+		        (short-option (aif (so-not-used? (string-downcase (subseq (symbol-name symbol) 0 1)))
+				        it
+				        (so-not-used? (subseq (symbol-name symbol) 0 1))))) ;if downcase shortopt is used; attempt upcase one
+	            (push `(,symbol nil) var-bindings)
+	            (push `((or (equal option ,long-option) ,(if short-option `(equal option ,short-option)))
+		            (setf ,symbol value))
+		          var-setters)
+	            (if file-vars?
+		        (progn (push long-option file-params)
+			       (if short-option (push short-option file-params)))
+		        (progn (push long-option bool-params)
+			       (if short-option (push short-option bool-params))))))))))
     `(let ,(cons `(,files nil) var-bindings)
-       (do-parsed-options (,(rest cli-options) ,bool-params ,file-params ,files)
+       (do-parsed-options (,cli-options ,bool-params ,file-params ,files)
 	 (cond ,@var-setters))
        ,@body)))
 
@@ -178,7 +184,7 @@
     ;;loop over the option/value pairs pushing them into parsed-options
     (do-parsed-options (cli-options bool-params file-params files)
       (push option parsed-options)
-      (unless (or (equal value nil) (equal value t))
+      (unless (or (null value) (equal value t))
 	(push value parsed-options)))
     (if files
 	(reverse (append files (list "--")  parsed-options))
