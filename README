@@ -47,7 +47,7 @@ getopt - Given a list of cli tokens, parses and separates the options
 
 with-cli-options - Bind the values passing on the cli to a list of
 		   places provided by the user. For example:
-		   (with-cli-options (*cli-options* files)
+		   (with-cli-options (*cli-options*)
 		       (option1 option2 &file-parameters option3)
 		     ...)
 		   Option1 and option2 will either be true or nil 
