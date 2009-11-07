@@ -19,6 +19,7 @@
   (:export #:*cli-options*
            #:&file-parameters
            #:&free
+	   #:files
 	   #:do-parsed-options
 	   #:with-cli-options
 	   #:getopt))
@@ -75,12 +76,12 @@
   (with-gensyms (option options)
     (labels ((dispatch-on-option (option bool-case file-case) ;;a bit of code to determine whether an option is a boolean, file, or invalid.
 	       `(let ((option ,option))
-		  (cond ((find option (expand-list ,bool-params) :test #'equal)
+		  (cond ((find option ,bool-params :test #'equal)
 			 ,bool-case)
-			((find option (expand-list ,file-params) :test #'equal)
+			((find option ,file-params :test #'equal)
 			 ,file-case)
 			(t (warn (format nil "Bad option: ~A~%" option)))))))
-      `(let ((,options (expand-list ,cli-options)))
+      `(let ((,options ,cli-options))
 	 (loop while ,options do                        ;;loop over the tokens
 	      (let ((,option (pop ,options)))
 		(cond ((equal ,option "--")
@@ -108,6 +109,54 @@
 			 `(let ((value (pop ,options))) ,@body)))
 		      (t (push ,option ,files)))))))))
 
+(defun map-parsed-options (cli-options bool-params file-params opt-val-func free-opt-func)
+  "A macro that parses a list of command line tokens according to a set of
+   conditions and allows the user to operate on them as a series of key/value pairs.
+   -- cli-options: a tokenized command line with the executable name removed
+   -- bool-params: a list of parameters that do not require values; these are either
+           true or false depending on wether they were passed in on the cli.
+   -- file-params: a list of parameters that do require values; these are either false,
+           if not passed or the falue of the next token in the list.
+   -- files: a place to put all free tokens, (those not associated with an option or
+           listed after a '--' on the cli
+   -- body: the code that operates on the key/value pairs; The code in this block is
+           executed for every found option name and it associated value (always true
+           for boolean parameters) bound to 'option' and 'value' respectively.
+  'Do-parsed-options' is meant as a backend for convenient option parsing mechanisms such
+   as 'with-cli-options' and 'getopts'."
+  (macrolet ((dispatch-on-option (option bool-case file-case) ;;a bit of code to determine whether an option is a boolean, file, or invalid.
+	       `(let ((_option ,option))
+		  (cond ((find _option bool-params :test #'equal)
+			 ,bool-case)
+			((find _option file-params :test #'equal)
+			 ,file-case)
+			(t (warn (format nil "Bad option: ~A~%" option)))))))
+    (loop while cli-options do                        ;;loop over the tokens
+	 (let ((option (pop cli-options)))
+	   (cond ((equal option "--")
+		  (dolist (option cli-options)
+		    (funcall free-opt-func option))
+		  (return))
+		 ((and (equal (char option 0) #\-) ;;if short option(s) '-a' or '-asd'
+		       (not (equal (char option 1) #\-)))
+		  (doseq (char (subseq option 1)) ;;a set of short options is broken up and looped over separately
+		    (dispatch-on-option 
+		     (string char)
+		     (funcall opt-val-func _option t)
+		     (progn
+		       (if (= (length option) (1+ (position char option)))
+			   (funcall opt-val-func _option (pop cli-options))
+			   (funcall opt-val-func _option (subseq option (1+ (position char option)))))
+		       (return)))))
+		 ((and (equal (char option 0) #\-) ;;if long option
+		       (equal (char option 1) #\-)
+		       (not (equal (char option 2) #\-)))
+		  (dispatch-on-option 
+		   (subseq option 2)
+		   (funcall opt-val-func _option t)
+		   (funcall opt-val-func _option (pop cli-options))))
+		 (t (funcall free-opt-func option)))))))
+
 (defmacro with-cli-options ((&optional (cli-options *cli-options*)) option-variables &body body)
   "The macro automatically binds passed in command line options to a set of user defined variable names.
 
@@ -121,7 +170,7 @@
 	(var-bindings nil)
 	(var-setters nil)
 	(file-vars? nil)
-	(files nil))
+	(files 'files))
     ;;loop over the symbols in option-variables filling the bool and file parameter lists and
     ;;generating the code forms for binding and assigning value to the variables
     (block nil 
@@ -182,10 +231,14 @@
 	  (push (string-right-trim "=" opt) file-params)
 	  (push opt bool-params)))
     ;;loop over the option/value pairs pushing them into parsed-options
-    (do-parsed-options (cli-options bool-params file-params files)
-      (push option parsed-options)
-      (unless (or (null value) (equal value t))
-	(push value parsed-options)))
+    (map-parsed-options cli-options bool-params file-params 
+			#'(lambda (option value)
+			    (push option parsed-options)
+			    (unless (or (null value) (equal value t))
+			      (push value parsed-options)))
+			#'(lambda (option)
+			    (push option files)))
     (if files
-	(reverse (append files (list "--")  parsed-options))
+	(reverse (nconc files (list "--")  parsed-options))
 	(reverse parsed-options))))
+
