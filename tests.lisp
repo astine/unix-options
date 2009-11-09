@@ -19,12 +19,44 @@
 
 (in-package #:unix-options-tests)
 
+(def-suite unix-options-tests :description "The primary tests for unix options.")
+
+(in-suite unix-options-tests)
+
 (test alpha-numeric?-test 
   (is (unix-options::alpha-numeric? #\a))
   (is (unix-options::alpha-numeric? #\G))
   (is (unix-options::alpha-numeric? #\4))
   (is (not (unix-options::alpha-numeric? #\space)))
   (is (not (unix-options::alpha-numeric? #\return))))
+
+(test map-parsed-options-test
+  (let ((a nil) (b nil) (c nil) (d nil) (files nil))
+    (labels ((opt-val (option value)
+	       (cond ((equal option "a") (setf a value))
+		     ((equal option "b") (setf b value))
+		     ((equal option "c") (setf c value))
+		     ((equal option "d") (setf d value))))
+	     (free-val (free-val) 
+	       (push free-val files)))
+      (map-parsed-options '("-a") '("a" "b") '() #'opt-val #'free-val)
+      (is (identity a))
+      (is (not b))
+      (map-parsed-options '("-afilename") '() '("a" "b") #'opt-val #'free-val)
+      (is (equal a "filename"))
+      (is (not b))
+      (map-parsed-options '("-ab" "--cd" "--d") '("a" "b" "c" "d") '() #'opt-val #'free-val)
+      (is (identity a))
+      (is (identity b))
+      (is (not c))
+      (is (identity d))
+      (map-parsed-options '("-ab" "--chello" "--d" "hello") '("a" "b") '("c" "d") #'opt-val #'free-val)
+      (is (identity a))
+      (is (identity b))
+      (is (not c))
+      (is (equal d "hello"))
+      (map-parsed-options '("ab" "hello" "--" "hello") '() '() #'opt-val #'free-val)
+      (is (equal files '("hello" "hello" "ab"))))))
 
 (test getopt-test
   (is (equal (getopt '("-afgo.txt" "--alpha" "stay.txt" "--file" "return.txt" "loop.txt")
@@ -43,6 +75,12 @@
     (is (equal (getopt cli-options "abcf" '("file="))
 	       '("a" "b" "file" "file.txt" "--" "file2.txt")))))
 
-
-(run 'alpha-numeric?-test)
-(run 'getopt-test)
+(test with-cli-options-test
+  (with-cli-options ('("-asf" "hello" "--input" "file.txt" "--" "more" "less"))
+      (alpha beta sierra &parameters file input)
+    (is (identity alpha))
+    (is (not beta))
+    (is (identity sierra))
+    (is (equal file "hello"))
+    (is (equal input "file.txt"))
+    (is (equal free '("less" "more")))))

@@ -31,32 +31,130 @@ The library can be loaded through ASDF and used through the package
 
 Exported symbols are:
 
+=| *cli-options*      - variable
+=| &parameters        - symbol
+=| &free              - symbol
+=| free	              - symbol
+=| map-parsed-options - function
+=| getopt             - function
+=| with-cli-options   - macro
+
+An example of usage:
+
+(with-cli-options ()
+    (print &parameters in-file out-file)
+  (if print
+    (with-open-file (in :direction :input)
+      (with-open-file (out :direction :output)
+        (while (peek-char in)
+	  (write-char (read-char in) out))))))
+
+$ sample-program -p -i input.txt -o output.txt
+=> write input.txt to output.txt
+
+---------------------------------------------------------------------
+API:
+
+getopt - An imitation of the Unix 'getopt' command line program
+
+    prototype: (getopt cli-options shortopts longopts)
+
+    details: Getopt accepts three arguments: a list of tokens passed
+             in on the CLI, a string detailing available short-form
+             options and a list detailing long-form options. Getopt
+             breaks the tokens up and sorts them so that they can be
+             handled by the calling program more easily.
+ 
+             Cli-options can be any list of strings. Each string
+	     begging with a single '-' is interpreted as a series of
+             short options and any beginning with '--' is interpreted
+             as a long option. Others are either free tokens or
+             parameters. Any tokens appearing after a token that is
+             soley a '--', are interpreted as free tokens.
+
+             Shortopts takes the form: "abf:" where each letter is the
+             name of a permissable short option and a ':' following a
+             letter signifies that it takes a parameter.
+
+	     Longopts takes the form: '("option1" "file=") where each
+             string is the name of a long option and a '=' signifies
+             that the option takes a parameter.
+
+    example: (getopt '("-ab" "--file" "file.txt" "free")
+                     "ab"
+                     '("file="))
+             => '("a" "b" "file" "file.txt" "--" "free")
+	     
+
+with-cli-options - A macro that binds values passed in from the command
+                   line to local variables
+
+    prototype:  (with-cli-options (&optional (cli-options *cli-options))
+                                  option-variables &body body)
+				  
+    details: With-cli-options takes a list of symbols and attempts to
+             bind values passed in on the command line to them according
+             to a set of rules. For every symbol named in 
+             option-variables, with-cli-options creates a variable to 
+             which it binds any long option of the same name. 
+	     With-cli-options also take the first letter of any symbol
+             and bind short options of that letter to that symbol. If
+	     multiple symbols begin with the same letter, only the first
+	     in option-variables is bound the short option of the same
+	     letter; the second is bound to the uppercase version and any
+	     more must use a long option.
+
+	     In addition, symbols in option-variables are boolean by 
+	     default; that is, they bound to either t or nil depending on
+	     whether they are passed in on the cli. Symbols listed after
+	     &parameters, if it is present, are are considered parameter
+	     options, that is, they are bound to the next token on the cli
+	     if the are long options or the same or the rest of the
+	     current short option group, if they are short options. If
+	     nothing is passed for this options (ie. if it is the last
+	     token) it is bound to nil.
+	     
+	     Any tokens that aren't options or parameters to options are
+	     saved into a list of free tokens. This list is bound to 'free'
+	     unless a different symbol is provided in option-variables
+	     after &free.
+
+   example: (with-cli-options ('("-pi" "in" "--out-file" "out" "another"))
+                (print &parameters in-file out-file)
+	      (print print)
+	      (print in-file)
+	      (print out-file)
+	      (print free))
+            T
+	    "in"
+	    "out"
+	    ("another")
+	    => NIL
+            
 *cli-options* - bound to the list of whitspace separated tokens passed
                 on the command line.
-		
-getopt - Given a list of cli tokens, parses and separates the options
-         into there canonical format: 
-	 -a -b -c --parameter p-value -- file1 file2 file3
-	 for example:
-	 (getopt '("-af" "fil.txt" "--longopt" "fil2.txt" "fil3.txt")
-                 "af:s" '("longopt="))
-	 => '("a" "f" "fil.txt" "longopt" "fil2.txt" "--" "fil3.txt")
-	 Appending a short style option with a colon tells the parser
-  	 to look for values associated with it. Appending a long option
-	 with a "=" tells the parser the same thing.
 
-with-cli-options - Bind the values passing on the cli to a list of
-		   places provided by the user. For example:
-		   (with-cli-options (*cli-options*)
-		       (option1 option2 &file-parameters option3)
-		     ...)
-		   Option1 and option2 will either be true or nil 
-		   depending on whether they were passed on the cli
-		   and option3 will be either nil, if not passed, or
-		   the value of whatever string it was passed.
+map-parsed-options - Function that does the actual parsing of cli tokens
 
-do-parsed-options - Macro meant for backend processing of options but
-		    provided to grant the user more flexibility in
-		    using the library.
+    prototype: (map-parsed-options cli-options bool-options param-options
+                                   opt-val-func free-val-func)
 
-For more information, please see the source code.
+    details: Map-parsed-options is the backend function that does most
+             of the actual work in parsing cli functions. It is exposed
+	     to allow more front ends in addition to getopt and
+	     with-cli-options. Map-parsed-options receives a list of cli
+	     tokens, as well as two list of options, boolean options and
+	     options with parameters, respectively. The final two
+	     arguments are functions, one to handle found options and
+	     there values, and one to handle free tokens.
+
+    example: (map-parsed-options '("-ab" "value" "free") '("a") '("b")
+                                 (lambda (option value)
+                                    (format t "option: ~A; value: ~A~%"
+                                            option value))
+                                 (lambda (free-val)
+                                    (format t "free: ~A~%" free-val)))
+             option: a; value T
+             option: b; value value 
+	     free: free
+	     => NIL
