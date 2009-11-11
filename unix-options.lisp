@@ -105,10 +105,15 @@
 		 ((and (equal (char option 0) #\-) ;;if long option
 		       (equal (char option 1) #\-)
 		       (not (equal (char option 2) #\-)))
-		  (dispatch-on-option 
-		   (subseq option 2)
-		   (funcall opt-val-func _option t)
-		   (funcall opt-val-func _option (pop cli-options))))
+		  (aif (position #\= option)
+		    (dispatch-on-option
+		     (subseq option 2 it)
+		     (warn (format nil "Used '=' in an option that doesn't take a parameter: ~A~%" _option))
+		     (funcall opt-val-func _option (subseq option (1+ it))))
+		    (dispatch-on-option 
+		     (subseq option 2)
+		     (funcall opt-val-func _option t)
+		     (funcall opt-val-func _option (pop cli-options)))))
 		 (t (funcall free-opt-func option)))))))
 
 (defun alpha-numeric? (char)

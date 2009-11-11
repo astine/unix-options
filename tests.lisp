@@ -55,6 +55,9 @@
       (is (identity b))
       (is (not c))
       (is (equal d "hello"))
+      (map-parsed-options '("--a=filename" "--b=" "filename2") '() '("a" "b") #'opt-val #'free-val)
+      (is (equal a "filename"))
+      (is (equal b ""))
       (map-parsed-options '("ab" "hello" "--" "hello") '() '() #'opt-val #'free-val)
       (is (equal files '("hello" "hello" "ab"))))))
 
