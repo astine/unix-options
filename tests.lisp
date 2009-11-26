@@ -58,6 +58,7 @@
       (map-parsed-options '("--a=filename" "--b=" "filename2") '() '("a" "b") #'opt-val #'free-val)
       (is (equal a "filename"))
       (is (equal b ""))
+      (setf files nil)
       (map-parsed-options '("ab" "hello" "--" "hello") '() '() #'opt-val #'free-val)
       (is (equal files '("hello" "hello" "ab"))))))
 
@@ -87,3 +88,4 @@
     (is (equal file "hello"))
     (is (equal input "file.txt"))
     (is (equal free '("less" "more")))))
+
