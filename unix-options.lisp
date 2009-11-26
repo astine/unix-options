@@ -197,7 +197,7 @@
 		        (progn (push long-option bool-options)
 			       (if short-option (push short-option bool-options))))))))))
     `(let ,(cons `(,free-tokens nil) var-bindings)
-       (map-parsed-options ,cli-options ',bool-options ',param-options
+       (map-parsed-options ',cli-options ',bool-options ',param-options
 			   (lambda (option value)
 			     (cond ,@var-setters))
 			   (lambda (free-val)
