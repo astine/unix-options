@@ -68,10 +68,10 @@
   "A macro that parses a list of command line tokens according to a set of
    conditions and allows the user to operate on them as a series of key/value pairs.
    -- cli-options: a tokenized command line with the executable name removed
-   -- options: a list of parameters that do not require values; these are either
+   -- bool-options: a list of parameters that do not require values; these are either
            true or false depending on wether they were passed in on the cli.
-   -- parameters: a list of parameters that do require values; these are either false,
-           if not passed or the falue of the next token in the list.
+   -- param-options: a list of parameters that do require values; these are either false,
+           if not passed or the value of the next token in the list.
    -- opt-val-func: the code that operates on the key/value pairs; The code in this block is
            executed for every found option name and it associated value (always true
            for boolean parameters) bound to 'option' and 'value' respectively.
@@ -156,7 +156,7 @@
 	(reverse (nconc files (list "--")  parsed-options))
 	(reverse parsed-options))))
 
-(defmacro with-cli-options ((&optional (cli-options *cli-options*)) option-variables &body body)
+(defmacro with-cli-options ((&optional (cli-options 'unix-options::*cli-options*)) option-variables &body body)
   "The macro automatically binds passed in command line options to a set of user defined variable names.
 
    The list 'option-variables' contains a list of names to which 'with-cli-options' can bind the cli
@@ -203,4 +203,3 @@
 			   (lambda (free-val)
 			     (push free-val ,free-tokens)))
        ,@body)))
-
