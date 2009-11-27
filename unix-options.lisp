@@ -156,7 +156,7 @@
 	(reverse (nconc files (list "--")  parsed-options))
 	(reverse parsed-options))))
 
-(defmacro with-cli-options ((&optional (cli-options *cli-options*)) option-variables &body body)
+(defmacro with-cli-options ((&optional (cli-options 'unix-options::*cli-options*)) option-variables &body body)
   "The macro automatically binds passed in command line options to a set of user defined variable names.
 
    The list 'option-variables' contains a list of names to which 'with-cli-options' can bind the cli
@@ -203,4 +203,3 @@
 			   (lambda (free-val)
 			     (push free-val ,free-tokens)))
        ,@body)))
-
