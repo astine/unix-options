@@ -79,7 +79,7 @@
 	       '("a" "b" "file" "file.txt" "--" "file2.txt")))))
 
 (test with-cli-options-test
-  (with-cli-options ('("-asf" "hello" "--input" "file.txt" "--" "more" "less"))
+  (with-cli-options (("-asf" "hello" "--input" "file.txt" "--" "more" "less"))
       (alpha beta sierra &parameters file input)
     (is (identity alpha))
     (is (not beta))
