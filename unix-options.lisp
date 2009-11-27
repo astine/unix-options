@@ -68,10 +68,10 @@
   "A macro that parses a list of command line tokens according to a set of
    conditions and allows the user to operate on them as a series of key/value pairs.
    -- cli-options: a tokenized command line with the executable name removed
-   -- options: a list of parameters that do not require values; these are either
+   -- bool-options: a list of parameters that do not require values; these are either
            true or false depending on wether they were passed in on the cli.
-   -- parameters: a list of parameters that do require values; these are either false,
-           if not passed or the falue of the next token in the list.
+   -- param-options: a list of parameters that do require values; these are either false,
+           if not passed or the value of the next token in the list.
    -- opt-val-func: the code that operates on the key/value pairs; The code in this block is
            executed for every found option name and it associated value (always true
            for boolean parameters) bound to 'option' and 'value' respectively.
@@ -207,4 +207,3 @@
 			   (lambda (free-val)
 			     (push free-val ,free-tokens)))
        ,@body)))
-

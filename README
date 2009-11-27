@@ -89,7 +89,7 @@ getopt - An imitation of the Unix 'getopt' command line program
 with-cli-options - A macro that binds values passed in from the command
                    line to local variables
 
-    prototype:  (with-cli-options (&optional (cli-options *cli-options))
+    prototype:  (with-cli-options (&optional (cli-options *cli-options*))
                                   option-variables &body body)
 				  
     details: With-cli-options takes a list of symbols and attempts to
