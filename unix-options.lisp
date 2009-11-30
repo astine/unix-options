@@ -16,7 +16,7 @@
 
 (defpackage #:unix-options
   (:use #:cl)
-  (:export #:*cli-options*
+  (:export #:cli-options
            #:&parameters
            #:&free
 	   #:free
@@ -55,13 +55,13 @@
 		   symbols))
 	 ,@body))
 
-(defvar *cli-options*
+(defun cli-options ()
+  "list of tokens passed in at the cli"
   #+:SBCL (rest sb-ext:*posix-argv*)
   #+:CCL (rest *command-line-argument-list*)
   #+:CLISP (rest ext:*args*)
   #+:LISPWORKS (rest system:*line-arguments-list*)
   #+:CMU (rest extensions:*command-line-words*)
-  "list of tokens passed in at the cli"
  )
 
 (defun map-parsed-options (cli-options bool-options param-options opt-val-func free-opt-func)
@@ -156,7 +156,7 @@
 	(reverse (nconc files (list "--")  parsed-options))
 	(reverse parsed-options))))
 
-(defmacro with-cli-options ((&optional cli-options) option-variables &body body)
+(defmacro with-cli-options ((&optional (cli-options '(cli-options))) option-variables &body body)
   "The macro automatically binds passed in command line options to a set of user defined variable names.
 
    The list 'option-variables' contains a list of names to which 'with-cli-options' can bind the cli
@@ -197,10 +197,7 @@
 		        (progn (push long-option bool-options)
 			       (if short-option (push short-option bool-options))))))))))
     `(let ,(cons `(,free-tokens nil) var-bindings)
-       (map-parsed-options ,(typecase cli-options
-                              (null '*cli-options*)
-                              (symbol `',cli-options)
-                              (t `(list ,@cli-options)))
+       (map-parsed-options ,cli-options
                            ',bool-options ',param-options
 			   (lambda (option value)
 			     (cond ,@var-setters))
