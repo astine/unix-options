@@ -31,7 +31,7 @@ The library can be loaded through ASDF and used through the package
 
 Exported symbols are:
 
-=| *cli-options*      - variable
+=| cli-options      - variable
 =| &parameters        - symbol
 =| &free              - symbol
 =| free	              - symbol
@@ -89,7 +89,7 @@ getopt - An imitation of the Unix 'getopt' command line program
 with-cli-options - A macro that binds values passed in from the command
                    line to local variables
 
-    prototype:  (with-cli-options (&optional (cli-options *cli-options*))
+    prototype:  (with-cli-options (&optional (cli-options '(cli-options)))
                                   option-variables &body body)
 				  
     details: With-cli-options takes a list of symbols and attempts to
@@ -131,7 +131,7 @@ with-cli-options - A macro that binds values passed in from the command
 	    ("another")
 	    => NIL
             
-*cli-options* - bound to the list of whitspace separated tokens passed
+cli-options - returns the list of whitespace separated tokens passed
                 on the command line.
 
 map-parsed-options - Function that does the actual parsing of cli tokens

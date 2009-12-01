@@ -81,7 +81,9 @@
 
 (test with-cli-options-test
   (let ((cli-options '("-asf" "hello" "--input" "file.txt" "--" "more" "less"))
-	(unix-options::*cli-options* '("-asf" "hello" "--input" "file.txt" "--" "more" "less")))
+        (orig-cli-options #'cli-options))
+    (setf (fdefinition 'cli-options)
+          (lambda () '("-asf" "hello" "--input" "file.txt" "--" "more" "less")))
     (with-cli-options ('("-asf" "hello" "--input" "file.txt" "--" "more" "less"))
 	(alpha beta sierra &parameters file input)
       (is (identity alpha))
@@ -106,4 +108,5 @@
       (is (equal file "hello"))
       (is (equal input "file.txt"))
       (is (equal free '("less" "more"))))
-    ))
+    (setf (fdefinition 'cli-options) orig-cli-options)))
+
