@@ -64,6 +64,20 @@
   #+:CMU (rest extensions:*command-line-words*)
  )
 
+(defun exe-name ()
+  "The command used to execute this program"
+  #+:SBCL (first sb-ext:*posix-argv*)
+  #+:CCL (first *command-line-argument-list*)
+  #+:CLISP (first ext:*args*)
+  #+:LISPWORKS (first system:*line-arguments-list*)
+  #+:CMU (first extensions:*command-line-words*)
+  )
+
+(defun print-usage-summary (option-specs)
+  (dolist (option-spec option-specs)
+    (setf option-spec (nreverse option-spec))
+    (format t "~{~A,~A~} - ~A~%" (rest option-spec) (first option-spec))))
+
 (defun map-parsed-options (cli-options bool-options param-options opt-val-func free-opt-func)
   "A macro that parses a list of command line tokens according to a set of
    conditions and allows the user to operate on them as a series of key/value pairs.
