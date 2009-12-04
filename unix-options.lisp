@@ -73,10 +73,52 @@
   #+:CMU (first extensions:*command-line-words*)
   )
 
-(defun print-usage-summary (option-specs)
-  (dolist (option-spec option-specs)
-    (setf option-spec (nreverse option-spec))
-    (format t "~{~A,~A~} - ~A~%" (rest option-spec) (first option-spec))))
+(defun greatest (list &key (measure #'identity) (predicate #'>))
+  (reduce (lambda (x y) (if (funcall predicate 
+				     (funcall measure x)
+				     (funcall measure y))
+			    x
+			    y))
+	  list))
+
+(defun print-usage-summary (option-specs detailed-description)
+  "option-specs take the form of (short-opt, long-opt, parameter?, description)"
+  (labels ((to-list (item)
+	     (if (atom item)
+		 (list item)
+		 item))
+	   (parameter-string (parameter)
+	     (cond ((stringp parameter) (concatenate 'string "=" parameter))
+		   ((null parameter) "")
+		   (t "=PARAMETER")))
+	   (make-raw-option-spec-string (option-spec)
+	     (let ((so (to-list (first option-spec)))
+		   (lo (to-list (second option-spec))))
+	       (list 
+		(format nil "~?~:[~;,~]~?~A" 
+			"  ~:[~;~:*~{~A~^, ~}~]" (list so)
+			(and so lo)
+			"~6,1:T~:[~;~:*~{~A~^, ~}~]" (list lo)
+			(parameter-string (third option-spec)))
+		(fourth option-spec)))))
+    (let* ((specs (mapcar #'make-raw-option-spec-string option-specs))
+	   (max-spec-length (length (greatest (mapcar #'first specs) :measure #'length))))
+      (format t (concatenate 'string "~:{~A~" (write-to-string (1+ max-spec-length)) "t~A~%~}~A~%")
+	      specs
+	      detailed-description))))
+
+
+
+
+      (dolist (option-spec option-specs)
+	(format t (concatenate 'string "  ~{~A, ~}~{~A~^, ~}~A~" 
+			       (write-to-string option-length) ",1t~A~%") 
+		(to-list (first option-spec)) 
+		(to-list (second option-spec)) 
+		(parameter-string (third option-spec))
+		(fourth option-spec)))
+      (if detailed-description
+	  (format t "~A~%" detailed-description)))))
 
 (defun map-parsed-options (cli-options bool-options param-options opt-val-func free-opt-func)
   "A macro that parses a list of command line tokens according to a set of
