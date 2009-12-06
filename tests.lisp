@@ -110,3 +110,19 @@
       (is (equal free '("less" "more"))))
     (setf (fdefinition 'cli-options) orig-cli-options)))
 
+(test print-usage-summary-test
+  (is (equal
+       (with-output-to-string (*standard-output*)
+	 (print-usage-summary "sample~%~@{~A~%~}sample"
+			      '(("a" "alpha" nil "sample")
+				("bd" ("beta" "delta") nil "sample")
+				(nil "gamma" t "sample")
+				(nil "epsilon" "FILE" "sample")
+				("v" nil nil "sample"))))
+"sample
+  -a, --alpha              sample
+  -b, -d, --beta, --delta  sample
+      --gamma=PARAMETER    sample
+      --epsilon=FILE       sample
+  -v                       sample
+sample")))

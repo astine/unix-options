@@ -17,12 +17,14 @@
 (defpackage #:unix-options
   (:use #:cl)
   (:export #:cli-options
+	   #:exe-name
            #:&parameters
            #:&free
 	   #:free
 	   #:map-parsed-options
 	   #:getopt
-	   #:with-cli-options))
+	   #:with-cli-options
+	   #:print-usage-summary))
 
 (in-package #:unix-options)
 
@@ -85,33 +87,43 @@
 (defun concat (&rest strings)
   (apply #'concatenate (cons 'string (mapcar #'string strings))))
 
-(defun print-usage-summary (option-specs &key summary quick-description detailed-description)
-  "option-specs take the form of (short-opt, long-opt, parameter?, description)"
-  (labels ((to-list (item)
-	     (if (and item (atom item))
-		 (list item)
-		 item))
-	   (parameter-string (parameter)
-	     (cond ((stringp parameter) (concat "=" parameter))
-		   ((null parameter) "")
-		   (t "=PARAMETER")))
-	   (make-raw-option-spec-string (option-spec)
-	     (let ((so (to-list (first option-spec)))
+(defun print-usage-summary (description option-specs)
+  "Given a description (a control string) and a list of specs for options descriptions
+   prints a usage summary. 'Description' is a format control string, which is run
+   against a list of strings generated from the specs in 'option-specs' each spec takes 
+   the form of a list containing the following values in order:
+    short-opts  - a string contain characters used as short options for this option
+    long-opt    - either a single string, or a list of strings naming long options
+    parameter   - If true, specifies that this option takes a parameter; parameter type 
+                  or description can be specified as a string
+    description - A short description of this option"
+  (flet ((pre-form-option-spec (option-spec)
+	   (flet ((to-list (item)
+		    (if (and item (atom item))
+			(list item)
+			item))
+		  (parameter-string (parameter)
+		    (cond ((stringp parameter) (concat "=" parameter))
+			  ((null parameter) "")
+			  (t "=PARAMETER"))))
+	     (let ((so (map 'list #'identity (first option-spec)))
 		   (lo (to-list (second option-spec))))
 	       (list 
 		(format nil "~?~:[~;,~]~?~A" 
-			"  ~:[~;~:*~{~A~^, ~}~]" (list so)
+			"  ~:[~;~:*~{-~C~^, ~}~]" (list so)
 			(and so lo)
-			"~6,1T~:[~;~:*~{~A~^, ~}~]" (list lo)
+			"~6,1T~:[~;~:*~{--~A~^, ~}~]" (list lo)
 			(parameter-string (third option-spec)))
-		(fourth option-spec)))))
-    (let* ((specs (mapcar #'make-raw-option-spec-string option-specs))
-	   (max-spec-length (length (greatest (mapcar #'first specs) :measure #'length))))
-      (format t (concat "~A~%~A~%~:{~A~" (write-to-string (1+ max-spec-length)) "t~A~%~}~%~A~%")
-	      (aif summary it (concat "Usage: " (exe-name) " [OPTIONS]... [PARAMETERS]..."))
-	      (aif quick-description (concat it #\newline) "")
-	      specs
-	      (aif detailed-description it "")))))
+		(fourth option-spec))))))
+    (let* ((specs (mapcar #'pre-form-option-spec option-specs))
+	   (max-spec-length (length (greatest (mapcar #'first specs) :measure #'length)))
+	   (spec-strings (mapcar (lambda (spec)
+				   (format nil
+					   (concat "~A~" (write-to-string (+ 2 max-spec-length)) "t~A")
+					   (first spec)
+					   (second spec)))
+				 specs)))
+      (format t "~?" description spec-strings))))
 
 (defun map-parsed-options (cli-options bool-options param-options opt-val-func free-opt-func)
   "A macro that parses a list of command line tokens according to a set of
