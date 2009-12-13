@@ -43,6 +43,11 @@
   `(let ((it ,test))
      (if it ,@forms)))
 
+(defmacro defrestart (name)
+  `(defun ,name (c)
+     (aif (find-restart ',name)
+	  (invoke-restart it))))
+
 (defmacro doseq ((var sequence) &body body)
   (let ((index (gensym))
 	(seq (gensym)))
@@ -125,6 +130,14 @@
 				 specs)))
       (format t "~?" description spec-strings))))
 
+(define-condition bad-option-warning (warning) 
+  ((option :initarg :option :reader option)
+   (details :initarg :details :reader details))
+  (:report (lambda (condition stream)
+	     (format stream "~A: ~A"
+		     (details condition)
+		     (option condition)))))
+  
 (defun map-parsed-options (cli-options bool-options param-options opt-val-func free-opt-func)
   "A macro that parses a list of command line tokens according to a set of
    conditions and allows the user to operate on them as a series of key/value pairs.
@@ -145,7 +158,7 @@
 			 ,bool-case)
 			((find _option param-options :test #'equal)
 			 ,file-case)
-			(t (warn (format nil "Bad option: ~A~%" option)))))))
+			(t (warn 'bad-option-warning :option _option :details "Invalid option"))))))
     (loop while cli-options do                        ;;loop over the tokens
 	 (let ((option (pop cli-options)))
 	   (cond ((equal option "--")
@@ -169,7 +182,8 @@
 		  (aif (position #\= option)
 		    (dispatch-on-option
 		     (subseq option 2 it)
-		     (warn (format nil "Used '=' in an option that doesn't take a parameter: ~A~%" _option))
+		     (warn 'bad-option-warning :option _option :details
+			   "Used '=' in an option that doesn't take a parameter")
 		     (funcall opt-val-func _option (subseq option (1+ it))))
 		    (dispatch-on-option 
 		     (subseq option 2)
@@ -217,7 +231,7 @@
 	(reverse (nconc files (list "--")  parsed-options))
 	(reverse parsed-options))))
 
-(defmacro with-cli-options ((&optional (cli-options '(cli-options))) option-variables &body body)
+(defmacro with-cli-options ((&optional (cli-options '(cli-options)) enable-usage-summary) option-variables &body body)
   "The macro automatically binds passed in command line options to a set of user defined variable names.
 
    The list 'option-variables' contains a list of names to which 'with-cli-options' can bind the cli
@@ -229,39 +243,63 @@
 	(param-options nil)
 	(var-bindings nil)
 	(var-setters nil)
+	(usage-descriptors nil)
 	(param-options? nil)
 	(free-tokens 'free))
     ;;loop over the symbols in option-variables filling the bool and file parameter lists and
     ;;generating the code forms for binding and assigning value to the variables
     (block nil 
       (dolist (symbol option-variables)
-        (cond ((eql symbol '&parameters)
-	       (setf param-options? t))
-              ((eql symbol '&free)
-               (setf free-tokens (car (last option-variables)))
-               (return))
-	      (t (flet ((so-not-used? (so) ;'so' = 'short option'
-		         (unless (or (find so bool-options :test #'equal) 
-			             (find so param-options :test #'equal))
-		           so)))
-	          (let ((long-option (string-downcase (symbol-name symbol)))
-		        (short-option (aif (so-not-used? (string-downcase (subseq (symbol-name symbol) 0 1)))
-				        it
-				        (so-not-used? (subseq (symbol-name symbol) 0 1))))) ;if downcase shortopt is used; attempt upcase one
-	            (push `(,symbol nil) var-bindings)
-	            (push `((or (equal option ,long-option) ,(if short-option `(equal option ,short-option)))
-		            (setf ,symbol value))
-		          var-setters)
-	            (if param-options?
-		        (progn (push long-option param-options)
-			       (if short-option (push short-option param-options)))
-		        (progn (push long-option bool-options)
-			       (if short-option (push short-option bool-options))))))))))
-    `(let ,(cons `(,free-tokens nil) var-bindings)
-       (map-parsed-options ,cli-options
-                           ',bool-options ',param-options
-			   (lambda (option value)
-			     (cond ,@var-setters))
-			   (lambda (free-val)
-			     (push free-val ,free-tokens)))
-       ,@body)))
+	(let ((doc-string "option"))
+	  (when (listp symbol)
+	    (setf doc-string (second symbol))
+	    (setf symbol (first symbol)))
+	  (cond ((eql symbol '&parameters)
+		 (setf param-options? t))
+		((eql symbol '&free)
+		 (setf free-tokens (car (last option-variables)))
+		 (return))
+		(t (flet ((so-not-used? (so) ;'so' = 'short option'
+			    (unless (or (find so bool-options :test #'equal) 
+					(find so param-options :test #'equal))
+			      so)))
+		     (let ((long-option (string-downcase (symbol-name symbol)))
+			   (short-option (aif (so-not-used? (string-downcase (subseq (symbol-name symbol) 0 1)))
+					      it
+					      (so-not-used? (subseq (symbol-name symbol) 0 1))))) ;if downcase shortopt is used; attempt upcase one
+		       (push `(,symbol nil) var-bindings)
+		       (push `((or (equal option ,long-option) ,(if short-option `(equal option ,short-option)))
+			       (setf ,symbol value))
+			     var-setters)
+		       (when enable-usage-summary
+			 (push `(,short-option ,long-option ,param-options? ,doc-string) usage-descriptors))
+		       (if param-options?
+			   (progn (push long-option param-options)
+				  (if short-option (push short-option param-options)))
+			   (progn (push long-option bool-options)
+				  (if short-option (push short-option bool-options)))))))))))
+    (let ((code `(let ,(cons `(,free-tokens nil) var-bindings)  ;form the main block of code so it can be optionally wrapping with a handler-case
+		   (map-parsed-options ,cli-options
+				       ',bool-options ',param-options
+				       (lambda (option value)
+					 (cond ,@var-setters))
+				       (lambda (free-val)
+					 (push free-val ,free-tokens)))
+		   ,@body)))
+      (when enable-usage-summary
+	(let ((print-summary-code `(print-usage-summary ,(if (stringp enable-usage-summary) enable-usage-summary
+							     (concat "Usage: "
+								     (exe-name)
+								     " [OPTIONS]... -- "
+								     (symbol-name free-tokens)
+								    "...~%~%~@{~A~%~}~%end summary"))
+							',(nreverse (cons '("h" "help" nil "Prints this summary")
+									  usage-descriptors)))))
+	  (push "h" bool-options)
+	  (push "help" bool-options)
+	  (push `((or (equal option "help") (equal option "h")) 
+		  ,print-summary-code) var-setters)
+	  (setf code `(handler-case ,code (bad-option-warning (c)
+					    (format t "WARNING: ~A: ~A~%~%" (details c) (option c))
+					    ,print-summary-code)))))
+      code)))
