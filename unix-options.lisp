@@ -278,28 +278,30 @@
 				  (if short-option (push short-option param-options)))
 			   (progn (push long-option bool-options)
 				  (if short-option (push short-option bool-options)))))))))))
-    (let ((code `(let ,(cons `(,free-tokens nil) var-bindings)  ;form the main block of code so it can be optionally wrapping with a handler-case
-		   (map-parsed-options ,cli-options
-				       ',bool-options ',param-options
-				       (lambda (option value)
-					 (cond ,@var-setters))
-				       (lambda (free-val)
-					 (push free-val ,free-tokens)))
-		   ,@body)))
-      (when enable-usage-summary
-	(let ((print-summary-code `(print-usage-summary ,(if (stringp enable-usage-summary) enable-usage-summary
-							     (concat "Usage: "
-								     (exe-name)
-								     " [OPTIONS]... -- "
-								     (symbol-name free-tokens)
-								    "...~%~%~@{~A~%~}~%end summary"))
-							',(nreverse (cons '("h" "help" nil "Prints this summary")
-									  usage-descriptors)))))
-	  (push "h" bool-options)
-	  (push "help" bool-options)
-	  (push `((or (equal option "help") (equal option "h")) 
-		  ,print-summary-code) var-setters)
-	  (setf code `(handler-case ,code (bad-option-warning (c)
-					    (format t "WARNING: ~A: ~A~%~%" (details c) (option c))
-					    ,print-summary-code)))))
-      code)))
+    (flet ((code ()  ;form the main block of code so it can be optionally wrapping with a handler-case
+	     `(let ,(cons `(,free-tokens nil) var-bindings)
+		(map-parsed-options ,cli-options
+				    ',bool-options ',param-options
+				    (lambda (option value)
+				      (cond ,@var-setters))
+				    (lambda (free-val)
+				      (push free-val ,free-tokens)))
+		,@body)))
+      (if enable-usage-summary
+	  (progn
+	    (let ((print-summary-code `(print-usage-summary ,(if (stringp enable-usage-summary) enable-usage-summary
+								 (concat "Usage: "
+									 (exe-name)
+									 " [OPTIONS]... -- "
+									 (symbol-name free-tokens)
+									 "...~%~%~@{~A~%~}~%end summary"))
+							    ',(nreverse (cons '("h" "help" nil "Prints this summary")
+									      usage-descriptors)))))
+	      (push "h" bool-options)
+	      (push "help" bool-options)
+	      (push `((or (equal option "help") (equal option "h")) 
+		      (progn ,print-summary-code (return-from with-cli-options))) var-setters)
+	      (setf code `(block with-cli-options (handler-case ,(code) (bad-option-warning (c)
+						  (format t "WARNING: ~A: ~A~%~%" (details c) (option c))
+						  ,print-summary-code))))))
+	  (code)))))
