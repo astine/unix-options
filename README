@@ -89,7 +89,8 @@ getopt - An imitation of the Unix 'getopt' command line program
 with-cli-options - A macro that binds values passed in from the command
                    line to local variables
 
-    prototype:  (with-cli-options (&optional (cli-options '(cli-options)))
+    prototype:  (with-cli-options (&optional (cli-options '(cli-options))
+                                             enable-usage-summary)
                                   option-variables &body body)
 				  
     details: With-cli-options takes a list of symbols and attempts to
@@ -103,6 +104,10 @@ with-cli-options - A macro that binds values passed in from the command
 	     in option-variables is bound the short option of the same
 	     letter; the second is bound to the uppercase version and any
 	     more must use a long option.
+	     
+	     Optionally, each entry in option-variables can be a short
+	     list the first item being the symbol to be used and the
+	     second a doc-string for the value to be bound to it.
 
 	     In addition, symbols in option-variables are boolean by 
 	     default; that is, they bound to either t or nil depending on
@@ -118,6 +123,15 @@ with-cli-options - A macro that binds values passed in from the command
 	     saved into a list of free tokens. This list is bound to 'free'
 	     unless a different symbol is provided in option-variables
 	     after &free.
+	     
+	     If enable-usage-summary is set, then with-cli-options will be
+	     able to print out a usage summary (using print-usage-summary)
+	     based on the options bound in option-varibles. The summary
+	     will be printed either when an invalid option is specified or
+	     the user uses '-h' or '--help' as an option. If
+	     enable-usage-summary is set to a string, that string is passed
+	     as control string to print-usage-summary. Else, a generic
+	     string is used.
 
    example: (with-cli-options ('("-pi" "in" "--out-file" "out" "another"))
                 (print &parameters in-file out-file)
@@ -133,6 +147,41 @@ with-cli-options - A macro that binds values passed in from the command
             
 cli-options - returns the list of whitespace separated tokens passed
                 on the command line.
+		
+print-usage-summary - Prints a usage description of the current program
+
+    prototype: (print-usage-summary description option-specs)
+
+    details: Print-usage-summary print a usage summary of options specified
+             by options-specs. Each member of the list option-specs is a
+	     list of the following form:
+	    
+	     (short-option(s) long-options(s) parameter description)
+
+	     The first item in the list is a string containing all chacters
+	     used as short options for a specified option. The second item
+	     is either a string or list of strings each containing the name
+	     of a possible longform of the same option. The third item is a
+	     boolean specifying whether an option takes a parameter. It can
+	     be a string arbitrarily specifying some detail of the 
+	     parameter. The final item is a description of the option.
+
+	     The function takes each option-spec and generates a string
+	     describing in detail each option. The resulting strings are
+	     passed as arguments to a call to format. Description is used
+	     as the control string.
+
+    example: (print-usage-summary "Usage:~%~@{~A~%~}~%end summary"
+                                  '(("a" "alpha" nil "A simple option")
+				    ("f" "file" "FILENAME" "A filename")
+				    ("bd" "beta" nil "Another option")))
+             Usage:
+               -a, --alpha          A simple option
+	       -f, --file=FILENAME  A filename
+	       -b, -d, --beta       Another option
+
+	     end summary
+             =>NIL
 
 map-parsed-options - Function that does the actual parsing of cli tokens
 

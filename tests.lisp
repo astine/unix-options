@@ -79,6 +79,23 @@
     (is (equal (getopt cli-options "abcf" '("file="))
 	       '("a" "b" "file" "file.txt" "--" "file2.txt")))))
 
+(test print-usage-summary-test
+  (is (equal
+       (with-output-to-string (*standard-output*)
+	 (print-usage-summary "sample~%~@{~A~%~}sample"
+			      '(("a" "alpha" nil "sample")
+				("bd" ("beta" "delta") nil "sample")
+				(nil "gamma" t "sample")
+				(nil "epsilon" "FILE" "sample")
+				("v" nil nil "sample"))))
+"sample
+  -a, --alpha              sample
+  -b, -d, --beta, --delta  sample
+      --gamma=PARAMETER    sample
+      --epsilon=FILE       sample
+  -v                       sample
+sample")))
+
 (test with-cli-options-test
   (let ((cli-options '("-asf" "hello" "--input" "file.txt" "--" "more" "less"))
         (orig-cli-options #'cli-options))
@@ -108,21 +125,22 @@
       (is (equal file "hello"))
       (is (equal input "file.txt"))
       (is (equal free '("less" "more"))))
-    (setf (fdefinition 'cli-options) orig-cli-options)))
+    (is (equal
+	 (with-output-to-string (*standard-output*)
+	   (with-cli-options ('("-x") t) ()))
+"WARNING: Invalid option: x
 
-(test print-usage-summary-test
-  (is (equal
-       (with-output-to-string (*standard-output*)
-	 (print-usage-summary "sample~%~@{~A~%~}sample"
-			      '(("a" "alpha" nil "sample")
-				("bd" ("beta" "delta") nil "sample")
-				(nil "gamma" t "sample")
-				(nil "epsilon" "FILE" "sample")
-				("v" nil nil "sample"))))
-"sample
-  -a, --alpha              sample
-  -b, -d, --beta, --delta  sample
-      --gamma=PARAMETER    sample
-      --epsilon=FILE       sample
-  -v                       sample
-sample")))
+Usage: /usr/bin/sbcl [OPTIONS]... -- FREE...
+
+  -h, --help  Prints this summary
+
+"))
+    (is (equal
+	 (with-output-to-string (*standard-output*)
+	   (with-cli-options ('("-h") t) ()))
+"Usage: /usr/bin/sbcl [OPTIONS]... -- FREE...
+
+  -h, --help  Prints this summary
+
+"))
+    (setf (fdefinition 'cli-options) orig-cli-options)))
