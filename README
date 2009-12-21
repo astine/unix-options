@@ -154,7 +154,7 @@ print-usage-summary - Prints a usage description of the current program
 
     details: Print-usage-summary print a usage summary of options specified
              by options-specs. Each member of the list option-specs is a
-             list of the following form:
+             list of specs of the following form:
             
              (short-option(s) long-options(s) parameter description)
 
