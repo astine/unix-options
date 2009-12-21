@@ -15,6 +15,6 @@
 ;;; ----------------------------------------------------------------------
 
 (asdf:defsystem #:unix-options
-  :version "0.1.2"
+  :version "0.2.2"
   :serial t
   :components ((:file "unix-options")))
