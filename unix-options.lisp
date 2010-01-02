@@ -291,11 +291,13 @@
       (if enable-usage-summary
 	  (progn
 	    (let ((print-summary-code `(print-usage-summary ,(if (stringp enable-usage-summary) enable-usage-summary
-								 (concat "Usage: "
-									 (exe-name)
-									 " [OPTIONS]... -- "
-									 (symbol-name free-tokens)
-									 "...~%~%~@{~A~%~}~%"))
+								 `(format nil ,(concat "Usage: "
+                                                                                       "~A"
+                                                                                       " [OPTIONS]... -- "
+                                                                                       (symbol-name free-tokens)
+                                                                                       "~A")
+
+                                                                          (exe-name) "...~%~%~@{~A~%~}~%"))
 							    ',(nreverse (cons '("h" "help" nil "Prints this summary")
 									      usage-descriptors)))))
 	      (push "h" bool-options)
