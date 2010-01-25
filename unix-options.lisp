@@ -62,6 +62,30 @@
 		   symbols))
 	 ,@body))
 
+;; -------- option classes --------
+
+(defclass option ()
+  ((shortform-tokens :accessor shortform-tokens
+		     :initarg :shortform-tokens
+		     :initform ""
+		     :documentation "A collection of all short tokens valid for this option")
+   (longform-tokens :accessor longform-tokens
+		    :initarg :longform-tokens
+		    :initform ""
+		    :documentation "A collection of all long tokens valid for this option")
+   (value :accessor value
+	  :initarg :value
+	  :initform nil
+	  :documentation "Gets bound to the value passed as this option")
+   (description :accessor description
+		:initarg :description
+		:initform ""
+		:documentation "A description of this option's purpose and usage")
+
+
+
+;; ------------------------------
+
 (defun cli-options ()
   "list of tokens passed in at the cli"
   #+:SBCL (rest sb-ext:*posix-argv*)
