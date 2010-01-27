@@ -67,11 +67,11 @@
 (defclass option ()
   ((shortform-tokens :accessor shortform-tokens
 		     :initarg :shortform-tokens
-		     :initform ""
+		     :initform () 
 		     :documentation "A collection of all short tokens valid for this option")
    (longform-tokens :accessor longform-tokens
 		    :initarg :longform-tokens
-		    :initform ""
+		    :initform ()
 		    :documentation "A collection of all long tokens valid for this option")
    (value :accessor value
 	  :initarg :value
@@ -80,9 +80,21 @@
    (description :accessor description
 		:initarg :description
 		:initform ""
-		:documentation "A description of this option's purpose and usage")
+		:documentation "A description of this option's purpose and usage"))
+  (:documentation "The basic representation of an option."))
 
+(defclass param-option (option)
+  ((parameter-type :accessor parameter-type
+		   :initarg :parameter-type
+		   :documentation "description of the parameter")))
 
+(defun add-token (token option)
+  (if (or (characterp token) (= (length token) 1))
+      (pushnew (coerce token 'character) (shortform-tokens option))
+      (pushnew token (longform-tokens option))))
+
+(defun get-shortform-tokens (option)
+  (coerce (shortform-tokens option) 'string))
 
 ;; ------------------------------
 
