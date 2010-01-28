@@ -64,24 +64,45 @@
 
 ;; -------- option classes --------
 
-(defclass option ()
-  ((shortform-tokens :accessor shortform-tokens
-		     :initarg :shortform-tokens
-		     :initform ""
-		     :documentation "A collection of all short tokens valid for this option")
-   (longform-tokens :accessor longform-tokens
-		    :initarg :longform-tokens
-		    :initform ""
-		    :documentation "A collection of all long tokens valid for this option")
-   (value :accessor value
-	  :initarg :value
-	  :initform nil
-	  :documentation "Gets bound to the value passed as this option")
+(defclass option-spec ()
+  ((short-tokens :accessor short-tokens
+		 :initarg :short-tokens
+		 :initform nil
+		 :documentation "A collection of all short tokens valid for this option")
+   (long-tokens :accessor long-tokens
+		:initarg :long-tokens
+		:initform nil
+		:documentation "A collection of all long tokens valid for this option")
+   (parameter :accessor parameter
+	      :initarg :parameter 
+	      :initform nil
+	      :documentation "A boolean specifiing whether this option takes a parameter.
+                              Can be a string describing the parameter.")
    (description :accessor description
 		:initarg :description
 		:initform ""
-		:documentation "A description of this option's purpose and usage")
+		:documentation "A description of this option's purpose and usage")))
 
+(defun make-option-spec (tokens parameter description)
+  (let ((ltokens nil)
+	(stokens nil))
+    (dolist (token tokens)
+      (if (or (characterp token)
+	      (equal (length token) 1))
+	  (push token stokens)
+	  (push token ltokens)))
+    (make-instance 'option-spec
+		   :short-tokens stokens
+		   :long-tokens ltokens
+		   :paramter parameter
+		   :description description)))
+
+
+(defun add-token (token option)
+  (if (or (characterp token)
+	  (equal (length token) 1))
+      (pushnew token (shortform-tokens option))
+      (pushnew token (longform-tokens option)))
 
 
 ;; ------------------------------
