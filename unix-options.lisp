@@ -87,22 +87,78 @@
   (let ((ltokens nil)
 	(stokens nil))
     (dolist (token tokens)
-      (if (or (characterp token)
-	      (equal (length token) 1))
+      (if (characterp token)
 	  (push token stokens)
 	  (push token ltokens)))
     (make-instance 'option-spec
 		   :short-tokens stokens
 		   :long-tokens ltokens
-		   :paramter parameter
+		   :parameter parameter
 		   :description description)))
 
+(defun greater (x y &optional (test #'>))
+  (if (funcall test x y)
+      x
+      y))
+
+(defun option-spec-length (option-spec)
+  (+ (greater (+ (* 4 (list-length (short-tokens option-spec))) 2) 6)
+     (- (* 4 (list-length (long-tokens option-spec))) 2)
+     (apply #'+ (mapcar #'length (long-tokens option-spec)))
+     (cond ((null (parameter option-spec))
+	    0)
+	   ((stringp (parameter option-spec))
+	    (1+ (length (parameter option-spec))))
+	   (t 10))))
+
+(defvar *option-specs* (make-hash-table))
+(defvar *option-spec-max-length* 0)
+
+(defun all-tokens ()
+  (let ((tokens nil))
+    (maphash (lambda (key option-spec)
+	       (declare (ignore key))
+	       (dolist (item (short-tokens option-spec))
+		 (pushnew item tokens))
+	       (dolist (item (long-tokens option-spec))
+		 (pushnew item tokens)))
+	     *option-specs*)
+    tokens))
+
+(defun add-option-spec (symbol parameter description)
+  (remhash symbol *option-specs*)
+  (let ((all-tokens (all-tokens)))
+    (setf (gethash symbol *option-specs*)
+	  (make-option-spec
+	   (let* ((str (string-downcase (string symbol)))
+		  (chr (elt str 0)))
+	     (cons str (cond ((not (member chr all-tokens)) (list chr))
+			     ((not (member (char-upcase chr) all-tokens)) (list (char-upcase chr)))
+			     (t nil))))
+	   parameter
+	   description)))
+  (setf *option-spec-max-length*
+	(greater *option-spec-max-length*
+		 (option-spec-length (gethash symbol *option-specs*)))))
+ 
+(defun option-spec-to-string (option-spec &optional (desc-offset *option-spec-max-length*))
+  (format nil (format nil "~A~~~A,2T~A"
+		      "~?~:[~;, ~]~?~A"
+		      (+ desc-offset 2)
+		      (description option-spec))
+	  "  ~:[~;~:*~{-~C~^, ~}~]" (list (short-tokens option-spec))
+	  (and (short-tokens option-spec) (long-tokens option-spec))
+	  "~6,0T~:[~;~:*~{--~A~^, ~}~]" (list (long-tokens option-spec))
+	  (cond ((null (parameter option-spec))
+		 "")
+		((stringp (parameter option-spec))
+		 (concat "=" (string-upcase (parameter option-spec))))
+		(t "=PARAMETER"))))   
 
 (defun add-token (token option)
-  (if (or (characterp token)
-	  (equal (length token) 1))
+  (if (characterp token)
       (pushnew token (shortform-tokens option))
-      (pushnew token (longform-tokens option)))
+      (pushnew token (longform-tokens option))))
 
 
 ;; ------------------------------
@@ -156,7 +212,7 @@
 		    (cond ((stringp parameter) (concat "=" parameter))
 			  ((null parameter) "")
 			  (t "=PARAMETER"))))
-	     (let ((so (map 'list #'identity (first option-spec)))
+	     (let ((so (coerce (first option-spec)
 		   (lo (to-list (second option-spec))))
 	       (list 
 		(format nil "~?~:[~;,~]~?~A" 
