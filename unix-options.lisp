@@ -64,33 +64,100 @@
 
 ;; -------- option classes --------
 
-(defclass option ()
-  ((shortform-tokens :accessor shortform-tokens
-		     :initarg :shortform-tokens
-		     :initform () 
-		     :documentation "A collection of all short tokens valid for this option")
-   (longform-tokens :accessor longform-tokens
-		    :initarg :longform-tokens
-		    :initform ()
-		    :documentation "A collection of all long tokens valid for this option")
-   (value :accessor value
-	  :initarg :value
-	  :initform nil
-	  :documentation "Gets bound to the value passed as this option")
+(defclass option-spec ()
+  ((short-tokens :accessor short-tokens
+		 :initarg :short-tokens
+		 :initform nil
+		 :documentation "A collection of all short tokens valid for this option")
+   (long-tokens :accessor long-tokens
+		:initarg :long-tokens
+		:initform nil
+		:documentation "A collection of all long tokens valid for this option")
+   (parameter :accessor parameter
+	      :initarg :parameter 
+	      :initform nil
+	      :documentation "A boolean specifiing whether this option takes a parameter.
+                              Can be a string describing the parameter.")
    (description :accessor description
 		:initarg :description
 		:initform ""
-		:documentation "A description of this option's purpose and usage"))
-  (:documentation "The basic representation of an option."))
+		:documentation "A description of this option's purpose and usage")))
 
-(defclass param-option (option)
-  ((parameter-type :accessor parameter-type
-		   :initarg :parameter-type
-		   :documentation "description of the parameter")))
+(defun make-option-spec (tokens parameter description)
+  (let ((ltokens nil)
+	(stokens nil))
+    (dolist (token tokens)
+      (if (characterp token)
+	  (push token stokens)
+	  (push token ltokens)))
+    (make-instance 'option-spec
+		   :short-tokens stokens
+		   :long-tokens ltokens
+		   :parameter parameter
+		   :description description)))
+
+(defun greater (x y &optional (test #'>))
+  (if (funcall test x y)
+      x
+      y))
+
+(defun option-spec-length (option-spec)
+  (+ (greater (+ (* 4 (list-length (short-tokens option-spec))) 2) 6)
+     (- (* 4 (list-length (long-tokens option-spec))) 2)
+     (apply #'+ (mapcar #'length (long-tokens option-spec)))
+     (cond ((null (parameter option-spec))
+	    0)
+	   ((stringp (parameter option-spec))
+	    (1+ (length (parameter option-spec))))
+	   (t 10))))
+
+(defvar *option-specs* (make-hash-table))
+(defvar *option-spec-max-length* 0)
+
+(defun all-tokens ()
+  (let ((tokens nil))
+    (maphash (lambda (key option-spec)
+	       (declare (ignore key))
+	       (dolist (item (short-tokens option-spec))
+		 (pushnew item tokens))
+	       (dolist (item (long-tokens option-spec))
+		 (pushnew item tokens)))
+	     *option-specs*)
+    tokens))
+
+(defun add-option-spec (symbol parameter description)
+  (remhash symbol *option-specs*)
+  (let ((all-tokens (all-tokens)))
+    (setf (gethash symbol *option-specs*)
+	  (make-option-spec
+	   (let* ((str (string-downcase (string symbol)))
+		  (chr (elt str 0)))
+	     (cons str (cond ((not (member chr all-tokens)) (list chr))
+			     ((not (member (char-upcase chr) all-tokens)) (list (char-upcase chr)))
+			     (t nil))))
+	   parameter
+	   description)))
+  (setf *option-spec-max-length*
+	(greater *option-spec-max-length*
+		 (option-spec-length (gethash symbol *option-specs*)))))
+ 
+(defun option-spec-to-string (option-spec &optional (desc-offset *option-spec-max-length*))
+  (format nil (format nil "~A~~~A,2T~A"
+		      "~?~:[~;, ~]~?~A"
+		      (+ desc-offset 2)
+		      (description option-spec))
+	  "  ~:[~;~:*~{-~C~^, ~}~]" (list (short-tokens option-spec))
+	  (and (short-tokens option-spec) (long-tokens option-spec))
+	  "~6,0T~:[~;~:*~{--~A~^, ~}~]" (list (long-tokens option-spec))
+	  (cond ((null (parameter option-spec))
+		 "")
+		((stringp (parameter option-spec))
+		 (concat "=" (string-upcase (parameter option-spec))))
+		(t "=PARAMETER"))))   
 
 (defun add-token (token option)
-  (if (or (characterp token) (= (length token) 1))
-      (pushnew (coerce token 'character) (shortform-tokens option))
+  (if (characterp token)
+      (pushnew token (shortform-tokens option))
       (pushnew token (longform-tokens option))))
 
 (defun get-shortform-tokens (option)
@@ -147,7 +214,7 @@
 		    (cond ((stringp parameter) (concat "=" parameter))
 			  ((null parameter) "")
 			  (t "=PARAMETER"))))
-	     (let ((so (map 'list #'identity (first option-spec)))
+	     (let ((so (coerce (first option-spec)
 		   (lo (to-list (second option-spec))))
 	       (list 
 		(format nil "~?~:[~;,~]~?~A" 
