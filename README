@@ -207,3 +207,7 @@ map-parsed-options - Function that does the actual parsing of cli tokens
              option: b; value value 
              free: free
              => NIL
+
+With thanks to:
+Leslie Polzer
+Henry Weller

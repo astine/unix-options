@@ -64,20 +64,20 @@
 
 (defun cli-options ()
   "list of tokens passed in at the cli"
-  #+:SBCL (rest sb-ext:*posix-argv*)
-  #+:CCL (rest *command-line-argument-list*)
-  #+:CLISP (rest ext:*args*)
-  #+:LISPWORKS (rest system:*line-arguments-list*)
-  #+:CMU (rest extensions:*command-line-words*)
+  #+:sbcl (rest sb-ext:*posix-argv*)
+  #+:ccl (rest *command-line-argument-list*)
+  #+:clisp (rest ext:*args*)
+  #+:lispworks (rest system:*line-arguments-list*)
+  #+:cmu (rest extensions:*command-line-words*)
  )
 
 (defun exe-name ()
   "The command used to execute this program"
-  #+:SBCL (first sb-ext:*posix-argv*)
-  #+:CCL (first *command-line-argument-list*)
-  #+:CLISP (first ext:*args*)
-  #+:LISPWORKS (first system:*line-arguments-list*)
-  #+:CMU (first extensions:*command-line-words*)
+  #+:sbcl (first sb-ext:*posix-argv*)
+  #+:ccl (first *command-line-argument-list*)
+  #+:clisp (first ext:*args*)
+  #+:lispworks (first system:*line-arguments-list*)
+  #+:cmu (first extensions:*command-line-words*)
   )
 
 (defun greatest (list &key (measure #'identity) (predicate #'>))
@@ -286,6 +286,7 @@
 				      (cond ,@var-setters))
 				    (lambda (free-val)
 				      (push free-val ,free-tokens)))
+		(setf ,free-tokens (nreverse ,free-tokens))
 		,@body)))
       (if enable-usage-summary
 	  (progn
