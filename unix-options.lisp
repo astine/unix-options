@@ -271,7 +271,7 @@
 			   (short-option (or short-option
                                              (aif (so-not-used? (string-downcase (subseq (symbol-name symbol) 0 1)))
                                                   it
-                                                  (so-not-used? (subseq (symbol-name symbol) 0 1)))))) ;if downcase shortopt is used; attempt upcase one
+                                                  (so-not-used? (subseq (string-upcase (symbol-name symbol)) 0 1)))))) ;if downcase shortopt is used; attempt upcase one
 		       (push `(,symbol nil) var-bindings)
 		       (push `((or (equal option ,long-option) ,(if short-option `(equal option ,short-option)))
 			       (setf ,symbol value))
@@ -301,7 +301,7 @@
                                                                       (format nil ,(concat "Usage: "
                                                                                             "~A"
                                                                                             " [OPTIONS]... -- "
-                                                                                            (symbol-name free-tokens)
+                                                                                            (string-upcase (symbol-name free-tokens))
                                                                                             "~A")
 
                                                                                (exe-name) "...~%~%~@{~A~%~}~%"))
