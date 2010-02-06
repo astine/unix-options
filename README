@@ -107,11 +107,11 @@ with-cli-options - A macro that binds values passed in from the command
              
              Optionally, each entry in option-variables can be a short
              lambda-list. The first item is symbol to be used. Two keyword
-	     parameters, doc-string and short-option, are also available
-	     and allow the use to specify a usage description and explicit
-	     short option respectively. If short-option is specified, it
-	     supercedes any attempt to derive the short option for the
-	     symbol name.
+             parameters, doc-string and short-option, are also available
+             and allow the use to specify a usage description and explicit
+             short option respectively. If short-option is specified, it
+             supercedes any attempt to derive the short option for the
+             symbol name.
 
              In addition, symbols in option-variables are boolean by 
              default; that is, they bound to either t or nil depending on
