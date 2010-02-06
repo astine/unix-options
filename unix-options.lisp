@@ -290,16 +290,19 @@
 		,@body)))
       (if enable-usage-summary
 	  (progn
-	    (let ((print-summary-code `(print-usage-summary ,(if (stringp enable-usage-summary) enable-usage-summary
-								 `(format nil ,(concat "Usage: "
-                                                                                       "~A"
-                                                                                       " [OPTIONS]... -- "
-                                                                                       (symbol-name free-tokens)
-                                                                                       "~A")
+	    (let ((print-summary-code `((lambda (enable-usage-summary)
+                                          (when enable-usage-summary
+                                            (print-usage-summary (if (stringp enable-usage-summary) enable-usage-summary
+                                                                      (format nil ,(concat "Usage: "
+                                                                                            "~A"
+                                                                                            " [OPTIONS]... -- "
+                                                                                            (symbol-name free-tokens)
+                                                                                            "~A")
 
-                                                                          (exe-name) "...~%~%~@{~A~%~}~%"))
-							    ',(nreverse (cons '("h" "help" nil "Prints this summary")
-									      usage-descriptors)))))
+                                                                               (exe-name) "...~%~%~@{~A~%~}~%"))
+                                                                 ',(nreverse (cons '("h" "help" nil "Prints this summary")
+                                                                                   usage-descriptors)))))
+                                        ,enable-usage-summary)))
 	      (push "h" bool-options)
 	      (push "help" bool-options)
 	      (push `((or (equal option "help") (equal option "h")) 
