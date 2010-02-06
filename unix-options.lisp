@@ -231,6 +231,12 @@
 	(reverse (nconc files (list "--")  parsed-options))
 	(reverse parsed-options))))
 
+(eval-when (:compile-toplevel :load-toplevel)
+  (defun ensure-list (val)
+    (if (listp val)
+        val
+      (list val))))
+
 (defmacro with-cli-options ((&optional (cli-options '(cli-options)) enable-usage-summary) option-variables &body body)
   "The macro automatically binds passed in command line options to a set of user defined variable names.
 
@@ -250,10 +256,8 @@
     ;;generating the code forms for binding and assigning value to the variables
     (block nil 
       (dolist (symbol option-variables)
-	(let ((doc-string "option"))
-	  (when (listp symbol)
-	    (setf doc-string (second symbol))
-	    (setf symbol (first symbol)))
+	(destructuring-bind (symbol &optional (doc-string "option") &key short-option)
+            (ensure-list symbol)
 	  (cond ((eql symbol '&parameters)
 		 (setf param-options? t))
 		((eql symbol '&free)
@@ -264,9 +268,10 @@
 					(find so param-options :test #'equal))
 			      so)))
 		     (let ((long-option (string-downcase (symbol-name symbol)))
-			   (short-option (aif (so-not-used? (string-downcase (subseq (symbol-name symbol) 0 1)))
-					      it
-					      (so-not-used? (subseq (symbol-name symbol) 0 1))))) ;if downcase shortopt is used; attempt upcase one
+			   (short-option (or short-option
+                                             (aif (so-not-used? (string-downcase (subseq (symbol-name symbol) 0 1)))
+                                                  it
+                                                  (so-not-used? (subseq (symbol-name symbol) 0 1)))))) ;if downcase shortopt is used; attempt upcase one
 		       (push `(,symbol nil) var-bindings)
 		       (push `((or (equal option ,long-option) ,(if short-option `(equal option ,short-option)))
 			       (setf ,symbol value))
