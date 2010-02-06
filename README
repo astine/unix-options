@@ -106,8 +106,12 @@ with-cli-options - A macro that binds values passed in from the command
              more must use a long option.
              
              Optionally, each entry in option-variables can be a short
-             list the first item being the symbol to be used and the
-             second a doc-string for the value to be bound to it.
+             lambda-list. The first item is symbol to be used. Two keyword
+	     parameters, doc-string and short-option, are also available
+	     and allow the use to specify a usage description and explicit
+	     short option respectively. If short-option is specified, it
+	     supercedes any attempt to derive the short option for the
+	     symbol name.
 
              In addition, symbols in option-variables are boolean by 
              default; that is, they bound to either t or nil depending on
@@ -208,6 +212,4 @@ map-parsed-options - Function that does the actual parsing of cli tokens
              free: free
              => NIL
 
-With thanks to:
-Leslie Polzer
-Henry Weller
+With thanks to folks who've reported bugs and provided patches.

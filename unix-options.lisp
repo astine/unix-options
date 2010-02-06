@@ -34,10 +34,11 @@
 ;;parameters: arguments that take a value
 ;;free args:  free arguments not associated with any parameter
 
-(defmacro expand-list (list)
-  (if (listp list)
-      `(list ,@list)
-       list))
+(eval-when (:compile-toplevel :load-toplevel)
+  (defun ensure-list (val)
+    (if (listp val)
+        val
+	(list val))))
 
 (defmacro aif (test &rest forms)
   `(let ((it ,test))
@@ -231,12 +232,6 @@
 	(reverse (nconc files (list "--")  parsed-options))
 	(reverse parsed-options))))
 
-(eval-when (:compile-toplevel :load-toplevel)
-  (defun ensure-list (val)
-    (if (listp val)
-        val
-      (list val))))
-
 (defmacro with-cli-options ((&optional (cli-options '(cli-options)) enable-usage-summary) option-variables &body body)
   "The macro automatically binds passed in command line options to a set of user defined variable names.
 
@@ -256,7 +251,7 @@
     ;;generating the code forms for binding and assigning value to the variables
     (block nil 
       (dolist (symbol option-variables)
-	(destructuring-bind (symbol &optional (doc-string "option") &key short-option)
+	(destructuring-bind (symbol &key (doc-string "option") short-option)
             (ensure-list symbol)
 	  (cond ((eql symbol '&parameters)
 		 (setf param-options? t))
@@ -268,10 +263,9 @@
 					(find so param-options :test #'equal))
 			      so)))
 		     (let ((long-option (string-downcase (symbol-name symbol)))
-			   (short-option (or short-option
-                                             (aif (so-not-used? (string-downcase (subseq (symbol-name symbol) 0 1)))
-                                                  it
-                                                  (so-not-used? (subseq (string-upcase (symbol-name symbol)) 0 1)))))) ;if downcase shortopt is used; attempt upcase one
+			   (short-option (or (so-not-used? short-option)
+                                             (so-not-used? (string-downcase (subseq (symbol-name symbol) 0 1)))
+					     (so-not-used? (subseq (string-upcase (symbol-name symbol)) 0 1))))) ;if downcase shortopt is used; attempt upcase one
 		       (push `(,symbol nil) var-bindings)
 		       (push `((or (equal option ,long-option) ,(if short-option `(equal option ,short-option)))
 			       (setf ,symbol value))
