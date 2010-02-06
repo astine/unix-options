@@ -64,6 +64,7 @@
 
 ;; -------- option classes --------
 
+
 (defclass option-spec ()
   ((short-tokens :accessor short-tokens
 		 :initarg :short-tokens
@@ -114,6 +115,16 @@
 (defvar *option-specs* (make-hash-table))
 (defvar *option-spec-max-length* 0)
 
+(defclass program-spec ()
+  ((option-specs :accessor option-specs 
+		 :initarg :option-specs 
+		 :initform nil
+		 :documentation "The option specs for this program")
+   (option-spec-max-length :accessor option-spec-max-length
+			   :initarg :option-spec-max-length
+			   :initform 0
+			   :documentation "The distance descriptions need to be offset for printing")
+    
 (defun all-tokens ()
   (let ((tokens nil))
     (maphash (lambda (key option-spec)
@@ -154,6 +165,14 @@
 		((stringp (parameter option-spec))
 		 (concat "=" (string-upcase (parameter option-spec))))
 		(t "=PARAMETER"))))   
+
+(defun print-usage-summary (description)
+  (let ((spec-strings nil))
+    (maphash (lambda (key value)
+	       (declare (ignore key))
+	       (push (option-spec-to-string value) spec-strings))
+	     *option-specs*)
+    (format t description spec-strings)))
 
 (defun add-token (token option)
   (if (characterp token)
