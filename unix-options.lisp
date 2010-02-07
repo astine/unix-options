@@ -66,7 +66,7 @@
 (defun cli-options ()
   "list of tokens passed in at the cli"
   #+:sbcl (rest sb-ext:*posix-argv*)
-  #+:ccl (rest *command-line-argument-list*)
+  #+:ccl (rest ccl:*command-line-argument-list*)
   #+:clisp (rest ext:*args*)
   #+:lispworks (rest system:*line-arguments-list*)
   #+:cmu (rest extensions:*command-line-words*)
@@ -75,7 +75,7 @@
 (defun exe-name ()
   "The command used to execute this program"
   #+:sbcl (first sb-ext:*posix-argv*)
-  #+:ccl (first *command-line-argument-list*)
+  #+:ccl (first ccl:*command-line-argument-list*)
   #+:clisp (first ext:*args*)
   #+:lispworks (first system:*line-arguments-list*)
   #+:cmu (first extensions:*command-line-words*)
