@@ -43,9 +43,9 @@ An example of usage:
 
 (with-cli-options ()
     (print &parameters in-file out-file)
-  (if print
-    (with-open-file (in :direction :input)
-      (with-open-file (out :direction :output)
+  (when print
+    (with-open-file (in in-file :direction :input)
+      (with-open-file (out out-file :direction :output)
         (while (peek-char in)
           (write-char (read-char in) out))))))
 
