@@ -104,23 +104,29 @@
                   or description can be specified as a string
     description - A short description of this option"
   (flet ((pre-form-option-spec (option-spec)
-	   (flet ((to-list (item)
-		    (if (and item (atom item))
-			(list item)
-			item))
-		  (parameter-string (parameter)
-		    (cond ((stringp parameter) (concat "=" parameter))
-			  ((null parameter) "")
-			  (t "=PARAMETER"))))
-	     (let ((so (map 'list #'identity (first option-spec)))
-		   (lo (to-list (second option-spec))))
-	       (list 
-		(format nil "~?~:[~;,~]~?~A" 
-			"  ~:[~;~:*~{-~C~^, ~}~]" (list so)
-			(and so lo)
-			"~6,1T~:[~;~:*~{--~A~^, ~}~]" (list lo)
-			(parameter-string (third option-spec)))
-		(fourth option-spec))))))
+           (flet ((to-list (item)
+                    (if (and item (atom item))
+                        (list item)
+                      item))
+                  (parameter-string (parameter)
+                    (typecase parameter
+                      ((and symbol
+                            (not boolean))
+                         (concat "=" (string-upcase (string parameter))))
+                      (string
+                         (concat "=" parameter))
+                      (null
+                         "")
+                      (t "=PARAMETER"))))
+             (let ((so (map 'list #'identity (first option-spec)))
+                   (lo (to-list (second option-spec))))
+               (list 
+                (format nil "~?~:[~;,~]~?~A" 
+                        "  ~:[~;~:*~{-~C~^, ~}~]" (list so)
+                        (and so lo)
+                        "~6,1T~:[~;~:*~{--~A~^, ~}~]" (list lo)
+                        (parameter-string (third option-spec)))
+                (fourth option-spec))))))
     (let* ((specs (mapcar #'pre-form-option-spec option-specs))
 	   (max-spec-length (length (greatest (mapcar #'first specs) :measure #'length)))
 	   (spec-strings (mapcar (lambda (spec)
@@ -251,7 +257,7 @@
     ;;generating the code forms for binding and assigning value to the variables
     (block nil 
       (dolist (symbol option-variables)
-	(destructuring-bind (symbol &key (doc-string "option") short-option)
+	(destructuring-bind (symbol &key (doc-string "option") short-option param-name)
             (ensure-list symbol)
 	  (cond ((eql symbol '&parameters)
 		 (setf param-options? t))
@@ -262,16 +268,16 @@
 			    (unless (or (find so bool-options :test #'equal) 
 					(find so param-options :test #'equal))
 			      so)))
-		     (let ((long-option (string-downcase (symbol-name symbol)))
+		     (let ((long-option (string-downcase (string symbol)))
 			   (short-option (or (so-not-used? short-option)
-                                             (so-not-used? (string-downcase (subseq (symbol-name symbol) 0 1)))
-					     (so-not-used? (subseq (string-upcase (symbol-name symbol)) 0 1))))) ;if downcase shortopt is used; attempt upcase one
+                                             (so-not-used? (string-downcase (subseq (string symbol) 0 1)))
+					     (so-not-used? (subseq (string-upcase (string symbol)) 0 1))))) ;if downcase shortopt is used; attempt upcase one
 		       (push `(,symbol nil) var-bindings)
 		       (push `((or (equal option ,long-option) ,(if short-option `(equal option ,short-option)))
 			       (setf ,symbol value))
 			     var-setters)
 		       (when enable-usage-summary
-			 (push `(,short-option ,long-option ,param-options? ,doc-string) usage-descriptors))
+			 (push `(,short-option ,long-option ,(or param-name param-options?) ,doc-string) usage-descriptors))
 		       (if param-options?
 			   (progn (push long-option param-options)
 				  (if short-option (push short-option param-options)))
@@ -295,7 +301,7 @@
                                                                       (format nil ,(concat "Usage: "
                                                                                             "~A"
                                                                                             " [OPTIONS]... -- "
-                                                                                            (string-upcase (symbol-name free-tokens))
+                                                                                            (string-upcase (string free-tokens))
                                                                                             "~A")
 
                                                                                (exe-name) "...~%~%~@{~A~%~}~%"))

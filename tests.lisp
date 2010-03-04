@@ -147,4 +147,23 @@ Usage: /usr/bin/sbcl [OPTIONS]... -- FREE...
   -h, --help  Prints this summary
 
 "))
+    (is (equal
+	 (with-output-to-string (*standard-output*)
+	   (with-cli-options ('("-h") t) 
+               (alpha beta (grue :short-option "R")
+                      &parameters 
+                      (file :doc-string "File to frob"
+                            :param-name :path-to-file)
+                      (frob :doc-string "Frobbing mode"
+                            :param-name "mode"))))
+"Usage: /usr/bin/sbcl [OPTIONS]... -- FREE...
+
+  -a, --alpha              option
+  -b, --beta               option
+  -R, --grue               option
+  -f, --file=PATH-TO-FILE  File to frob
+  -F, --frob=mode          Frobbing mode
+  -h, --help               Prints this summary
+
+"))
     (setf (fdefinition 'cli-options) orig-cli-options)))
