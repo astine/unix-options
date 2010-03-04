@@ -15,7 +15,7 @@
 ;;; ----------------------------------------------------------------------
 
 (defpackage #:unix-options
-  (:use #:cl)
+    (:use #:cl #:split-sequence)
   (:export #:cli-options
 	   #:exe-name
            #:&parameters
@@ -24,6 +24,7 @@
 	   #:map-parsed-options
 	   #:getopt
 	   #:with-cli-options
+           #:*default-usage-format-string*
 	   #:print-usage-summary))
 
 (in-package #:unix-options)
@@ -33,6 +34,8 @@
 ;;options:    arguments that can be passed in
 ;;parameters: arguments that take a value
 ;;free args:  free arguments not associated with any parameter
+
+(defvar *default-usage-format-string* "~%~%~@{~A~%~}~%")
 
 (eval-when (:compile-toplevel :load-toplevel)
   (defun ensure-list (val)
@@ -131,11 +134,12 @@
 	   (max-spec-length (length (greatest (mapcar #'first specs) :measure #'length)))
 	   (spec-strings (mapcar (lambda (spec)
 				   (format nil
-					   (concat "~A~" (write-to-string (+ 2 max-spec-length)) "t~A")
+					   (concat "~A~" (write-to-string (+ 2 max-spec-length)) "t~<~@{~A ~:_~}~:>")
 					   (first spec)
-					   (second spec)))
+					   (split-sequence #\Space (second spec))))
 				 specs)))
-      (format t "~?" description spec-strings))))
+      (defparameter *fmt* (list specs spec-strings description))
+      (apply #'format t description spec-strings))))
 
 (define-condition bad-option-warning (warning) 
   ((option :initarg :option :reader option)
@@ -327,9 +331,8 @@ all other options."
                                                                                             "~A"
                                                                                             " [OPTIONS]... -- "
                                                                                             (string-upcase (string free-tokens))
-                                                                                            "~A")
-
-                                                                               (exe-name) "...~%~%~@{~A~%~}~%"))
+                                                                                            "...~A")
+                                                                              (exe-name) *default-usage-format-string*))
                                                                  ',(nreverse (cons '("h" "help" nil "Prints this summary")
                                                                                    usage-descriptors)))))
                                         ,enable-usage-summary)))

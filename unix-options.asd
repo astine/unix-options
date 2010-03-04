@@ -17,4 +17,5 @@
 (asdf:defsystem #:unix-options
   :version "0.2.4"
   :serial t
+  :depends-on (:split-sequence)
   :components ((:file "unix-options")))
