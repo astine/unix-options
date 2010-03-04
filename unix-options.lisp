@@ -239,13 +239,38 @@
 	(reverse parsed-options))))
 
 (defmacro with-cli-options ((&optional (cli-options '(cli-options)) enable-usage-summary) option-variables &body body)
-  "The macro automatically binds passed in command line options to a set of user defined variable names.
+"The macro automatically binds passed in command line options to a set of user defined variable names,
+following the usual GNU conventions.
 
-   The list 'option-variables' contains a list of names to which 'with-cli-options' can bind the cli
-   options. Any (lowercase) longform option is bound the option-variable of the same name, lowercase short
-   options are bound to the first listed option variable beginning with that letter, and uppercase short
-   options are bound to the second listed option variable beginning with that letter. Variable names imply 
-   boolean parameters, unless listed after '&parameters' in which case they are file parameters."
+OPTION-VARIABLES is a lambda list, similar to a macro lambda list, of the form:
+
+\({boolean-option}* [&parameters {option-variable}*] [&free free-token])
+
+Each OPTION-VARIABLE is either a symbol or a lambda list of the form:
+
+\(boolean-option  &key doc-string short-option) 
+or
+\(option-variable &key doc-string short-option param-name)
+
+The first form adds a boolean switch \"--boolean-option\", with a shortform alias specified by
+SHORT-OPTION. If none is specified, the lowercase first letter of the variable name is used, and
+if that is taken already, uppercase first letter. If this is also taken, the option will have no
+default shortform alias. DOC-STRING specifies the description of the parameter to print if
+ENABLE-USAGE-SUMMARY is true.
+ 
+The second form is only valid for parameter options, which follow the &PARAMETERS modifier. In
+this case, a longform option \"--option-variable=PARAMETER\" is installed (the \"=\" is
+optional). All the key arguments are interpreted as before, and PARAM-NAME allows specifying
+an alternative name to be displayed in the usage summary than the default \"PARAMETER\". It
+can be either a symbol, in which case its upper-case name will be used, or a string, which
+will be used verbatim.
+
+In both cases, the specified symbol will be bound to the value of the parsed option (either as
+a boolean or as a string) inside the body of WITH-CLI-OPTIONS.
+
+Lastly, if the &FREE modifier is specified, it should be followed by exactly one symbol, which
+will be used as the name of the variable to be bound to the list of free tokens encountered after
+all other options."
   (let ((bool-options nil)
 	(param-options nil)
 	(var-bindings nil)
