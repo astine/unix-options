@@ -62,6 +62,19 @@
 		   symbols))
 	 ,@body))
 
+(defun greater (x y &optional (test #'>))
+  (if (funcall test x y)
+      x
+      y))
+
+(defun greatest (list &optional (test #'>))
+  (reduce (lambda (x y)
+	    (greater x y test))
+	  list))
+
+(defun concat (&rest strings)
+  (apply #'concatenate (cons 'string (mapcar #'string strings))))
+
 ;; -------- option classes --------
 
 (defclass option-spec ()
@@ -96,10 +109,6 @@
 		   :parameter parameter
 		   :description description)))
 
-(defun greater (x y &optional (test #'>))
-  (if (funcall test x y)
-      x
-      y))
 
 (defun option-spec-length (option-spec)
   (+ (greater (+ (* 4 (list-length (short-tokens option-spec))) 2) 6)
@@ -141,7 +150,7 @@
 	(greater *option-spec-max-length*
 		 (option-spec-length (gethash symbol *option-specs*)))))
  
-(defun option-spec-to-string (option-spec &optional (desc-offset *option-spec-max-length*))
+(defun option-spec-to-string (option-spec &optional (desc-offset 50))
   (format nil (format nil "~A~~~A,2T~A"
 		      "~?~:[~;, ~]~?~A"
 		      (+ desc-offset 2)
@@ -157,8 +166,8 @@
 
 (defun add-token (token option)
   (if (characterp token)
-      (pushnew token (shortform-tokens option))
-      (pushnew token (longform-tokens option))))
+      (pushnew token (short-tokens option))
+      (pushnew token (long-tokens option))))
 
 
 ;; ------------------------------
@@ -181,18 +190,6 @@
   #+:CMU (first extensions:*command-line-words*)
   )
 
-(defun greatest (list &key (measure #'identity) (predicate #'>))
-  (reduce (lambda (x y) 
-	    (if (funcall predicate 
-			 (funcall measure x)
-			 (funcall measure y))
-		x
-		y))
-	  list))
-
-(defun concat (&rest strings)
-  (apply #'concatenate (cons 'string (mapcar #'string strings))))
-
 (defun print-usage-summary (description option-specs)
   "Given a description (a control string) and a list of specs for options descriptions
    prints a usage summary. 'Description' is a format control string, which is run
@@ -203,33 +200,15 @@
     parameter   - If true, specifies that this option takes a parameter; parameter type 
                   or description can be specified as a string
     description - A short description of this option"
-  (flet ((pre-form-option-spec (option-spec)
-	   (flet ((to-list (item)
-		    (if (and item (atom item))
-			(list item)
-			item))
-		  (parameter-string (parameter)
-		    (cond ((stringp parameter) (concat "=" parameter))
-			  ((null parameter) "")
-			  (t "=PARAMETER"))))
-	     (let ((so (coerce (first option-spec)
-		   (lo (to-list (second option-spec))))
-	       (list 
-		(format nil "~?~:[~;,~]~?~A" 
-			"  ~:[~;~:*~{-~C~^, ~}~]" (list so)
-			(and so lo)
-			"~6,1T~:[~;~:*~{--~A~^, ~}~]" (list lo)
-			(parameter-string (third option-spec)))
-		(fourth option-spec))))))
-    (let* ((specs (mapcar #'pre-form-option-spec option-specs))
-	   (max-spec-length (length (greatest (mapcar #'first specs) :measure #'length)))
-	   (spec-strings (mapcar (lambda (spec)
-				   (format nil
-					   (concat "~A~" (write-to-string (+ 2 max-spec-length)) "t~A")
-					   (first spec)
-					   (second spec)))
-				 specs)))
-      (format t "~?" description spec-strings))))
+  (let* ((specs (mapcar (lambda (spec)
+			  (typecase spec
+			    (list (apply #'make-option-spec spec))
+			    (t spec)))
+			option-specs))
+	 (max-spec-length (greatest (mapcar #'option-spec-length specs))))
+    (format t "~?" description (mapcar (lambda (spec)
+					 (option-spec-to-string spec max-spec-length))
+				       specs))))
 
 (define-condition bad-option-warning (warning) 
   ((option :initarg :option :reader option)
@@ -373,7 +352,7 @@
 			       (setf ,symbol value))
 			     var-setters)
 		       (when enable-usage-summary
-			 (push `(,short-option ,long-option ,param-options? ,doc-string) usage-descriptors))
+			 (push `((,(character short-option) ,long-option) ,param-options? ,doc-string) usage-descriptors))
 		       (if param-options?
 			   (progn (push long-option param-options)
 				  (if short-option (push short-option param-options)))
@@ -396,7 +375,7 @@
 									 " [OPTIONS]... -- "
 									 (symbol-name free-tokens)
 									 "...~%~%~@{~A~%~}~%"))
-							    ',(nreverse (cons '("h" "help" nil "Prints this summary")
+							    ',(nreverse (cons '((#\h "help") nil "Prints this summary")
 									      usage-descriptors)))))
 	      (push "h" bool-options)
 	      (push "help" bool-options)

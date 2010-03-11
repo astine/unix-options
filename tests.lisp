@@ -79,15 +79,16 @@
     (is (equal (getopt cli-options "abcf" '("file="))
 	       '("a" "b" "file" "file.txt" "--" "file2.txt")))))
 
+
 (test print-usage-summary-test
   (is (equal
        (with-output-to-string (*standard-output*)
 	 (print-usage-summary "sample~%~@{~A~%~}sample"
-			      '(("a" "alpha" nil "sample")
-				("bd" ("beta" "delta") nil "sample")
-				(nil "gamma" t "sample")
-				(nil "epsilon" "FILE" "sample")
-				("v" nil nil "sample"))))
+			      '(((#\a "alpha") nil "sample")
+				((#\b #\d "beta" "delta") nil "sample")
+				(("gamma") t "sample")
+				(("epsilon") "FILE" "sample")
+				((#\v) nil "sample"))))
 "sample
   -a, --alpha              sample
   -b, -d, --beta, --delta  sample
