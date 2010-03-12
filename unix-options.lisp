@@ -21,6 +21,12 @@
            #:&parameters
            #:&free
 	   #:free
+	   #:option-spec
+	   #:make-option-spec
+	   #:short-tokens
+	   #:long-tokens
+	   #:parameter
+	   #:description
 	   #:map-parsed-options
 	   #:getopt
 	   #:with-cli-options
@@ -96,21 +102,36 @@
 		:initform ""
 		:documentation "A description of this option's purpose and usage")))
 
-(defun make-option-spec (tokens parameter description)
-  (let ((ltokens nil)
-	(stokens nil))
-    (dolist (token tokens)
-      (if (characterp token)
-	  (push token stokens)
-	  (push token ltokens)))
-    (make-instance 'option-spec
-		   :short-tokens stokens
-		   :long-tokens ltokens
-		   :parameter parameter
-		   :description description)))
-
+(defun tokens-from-symbol (symbol)
+  (let* ((long-option (string-downcase (string symbol)))
+	 (short-option (char long-option 0)))
+    (list short-option long-option)))
+		  
+(defun make-option-spec (tokens &optional parameter description)
+  "Creates an option-spec object"
+  (let ((option-spec (make-instance 'option-spec)))
+    (with-slots (short-tokens long-tokens)
+	option-spec
+      (setf (parameter option-spec) parameter)
+      (setf (description option-spec) (or description "An option"))
+      (typecase tokens
+	(list (dolist (token tokens)
+		(typecase token
+		  (character (push token short-tokens))
+		  (string (push token long-tokens))
+		  (t (warn "Bad token: ~A" token))))
+	      (setf short-tokens (nreverse short-tokens))
+	      (setf long-tokens (nreverse long-tokens)))
+	(symbol (destructuring-bind (stoken ltoken)
+		    (tokens-from-symbol tokens)
+		  (push stoken short-tokens)
+		  (push ltoken long-tokens)))
+	(t (warn "Bad token specifier: ~A" tokens))))
+    option-spec))
 
 (defun option-spec-length (option-spec)
+  "Calculates the length of the string necessary to print all of the
+   tokens in a standard fashion"
   (+ (greater (+ (* 4 (list-length (short-tokens option-spec))) 2) 6)
      (- (* 4 (list-length (long-tokens option-spec))) 2)
      (apply #'+ (mapcar #'length (long-tokens option-spec)))
@@ -119,38 +140,9 @@
 	   ((stringp (parameter option-spec))
 	    (1+ (length (parameter option-spec))))
 	   (t 10))))
-
-(defvar *option-specs* (make-hash-table))
-(defvar *option-spec-max-length* 0)
-
-(defun all-tokens ()
-  (let ((tokens nil))
-    (maphash (lambda (key option-spec)
-	       (declare (ignore key))
-	       (dolist (item (short-tokens option-spec))
-		 (pushnew item tokens))
-	       (dolist (item (long-tokens option-spec))
-		 (pushnew item tokens)))
-	     *option-specs*)
-    tokens))
-
-(defun add-option-spec (symbol parameter description)
-  (remhash symbol *option-specs*)
-  (let ((all-tokens (all-tokens)))
-    (setf (gethash symbol *option-specs*)
-	  (make-option-spec
-	   (let* ((str (string-downcase (string symbol)))
-		  (chr (elt str 0)))
-	     (cons str (cond ((not (member chr all-tokens)) (list chr))
-			     ((not (member (char-upcase chr) all-tokens)) (list (char-upcase chr)))
-			     (t nil))))
-	   parameter
-	   description)))
-  (setf *option-spec-max-length*
-	(greater *option-spec-max-length*
-		 (option-spec-length (gethash symbol *option-specs*)))))
  
 (defun option-spec-to-string (option-spec &optional (desc-offset 50))
+  "Returns a human readable string describing the option spec."
   (format nil (format nil "~A~~~A,2T~A"
 		      "~?~:[~;, ~]~?~A"
 		      (+ desc-offset 2)
@@ -203,7 +195,9 @@
   (let* ((specs (mapcar (lambda (spec)
 			  (typecase spec
 			    (list (apply #'make-option-spec spec))
-			    (t spec)))
+			    (symbol (make-option-spec spec))
+			    (option-spec spec)
+			    (t (warn "Invalid Option Spec: ~A" spec))))
 			option-specs))
 	 (max-spec-length (greatest (mapcar #'option-spec-length specs))))
     (format t "~?" description (mapcar (lambda (spec)
@@ -270,6 +264,22 @@
 		     (funcall opt-val-func _option t)
 		     (funcall opt-val-func _option (pop cli-options)))))
 		 (t (funcall free-opt-func option)))))))
+
+(defun map-parsed-options-according-to-specs (cli-options option-specs opt-val-func free-opt-func)
+  (let ((bool-options nil)
+	(param-options nil))
+    (flet ((tokens (spec)
+	     (append (mapcar #'string (short-tokens spec))
+		     (long-tokens spec))))
+      (dolist (spec option-specs)
+	(if (parameter spec)
+	    (push (tokens spec) param-options) 
+	    (push (tokens spec) bool-options) ))
+      (map-parsed-options cli-options
+			  (mapcan #'identity bool-options)
+			  (mapcan #'identity param-options)
+			  opt-val-func
+			  free-opt-func))))
 
 (defun alpha-numeric? (char)
   "Returns true if 'char' is a letter of the English alphabet
