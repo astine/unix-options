@@ -83,6 +83,7 @@
 
 ;; -------- option classes --------
 
+
 (defclass option-spec ()
   ((short-tokens :accessor short-tokens
 		 :initarg :short-tokens
@@ -156,11 +157,21 @@
 		 (concat "=" (string-upcase (parameter option-spec))))
 		(t "=PARAMETER"))))   
 
+(defun print-usage-summary (description)
+  (let ((spec-strings nil))
+    (maphash (lambda (key value)
+	       (declare (ignore key))
+	       (push (option-spec-to-string value) spec-strings))
+	     *option-specs*)
+    (format t description spec-strings)))
+
 (defun add-token (token option)
   (if (characterp token)
       (pushnew token (short-tokens option))
       (pushnew token (long-tokens option))))
 
+(defun get-shortform-tokens (option)
+  (coerce (shortform-tokens option) 'string))
 
 ;; ------------------------------
 
