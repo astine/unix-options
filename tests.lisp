@@ -79,15 +79,43 @@
     (is (equal (getopt cli-options "abcf" '("file="))
 	       '("a" "b" "file" "file.txt" "--" "file2.txt")))))
 
+(test make-option-spec-test
+  (let ((os1 (make-option-spec 'alpha))
+	(os2 (make-option-spec 'beta nil "foo"))
+	(os3 (make-option-spec 'sierra t "bar"))
+	(os4 (make-option-spec 'gamma "test" "baz"))
+	(os5 (make-option-spec '("delta") nil "quux")))
+    (is (equal (short-tokens os1) '(#\a)))
+    (is (equal (long-tokens os1) '("alpha")))
+    (is (equal (parameter os1) nil))
+    (is (equal (description os1) "An option"))
+    (is (equal (short-tokens os2) '(#\b)))
+    (is (equal (long-tokens os2) '("beta")))
+    (is (equal (parameter os2) nil))
+    (is (equal (description os2) "foo"))
+    (is (equal (short-tokens os3) '(#\s)))
+    (is (equal (long-tokens os3) '("sierra")))
+    (is (equal (parameter os3) t))
+    (is (equal (description os3) "bar"))
+    (is (equal (short-tokens os4) '(#\g)))
+    (is (equal (long-tokens os4) '("gamma")))
+    (is (equal (parameter os4) "test"))
+    (is (equal (description os4) "baz"))
+    (is (equal (short-tokens os5) '()))
+    (is (equal (long-tokens os5) '("delta")))
+    (is (equal (parameter os5) nil))
+    (is (equal (description os5) "quux"))))
+	
+
 (test print-usage-summary-test
   (is (equal
        (with-output-to-string (*standard-output*)
 	 (print-usage-summary "sample~%~@{~A~%~}sample"
-			      '(("a" "alpha" nil "sample")
-				("bd" ("beta" "delta") nil "sample")
-				(nil "gamma" t "sample")
-				(nil "epsilon" "FILE" "sample")
-				("v" nil nil "sample"))))
+			      '(((#\a "alpha") nil "sample")
+				((#\b #\d "beta" "delta") nil "sample")
+				(("gamma") t "sample")
+				(("epsilon") "FILE" "sample")
+				((#\v) nil "sample"))))
 "sample
   -a, --alpha              sample
   -b, -d, --beta, --delta  sample

@@ -21,6 +21,12 @@
            #:&parameters
            #:&free
 	   #:free
+	   #:option-spec
+	   #:make-option-spec
+	   #:short-tokens
+	   #:long-tokens
+	   #:parameter
+	   #:description
 	   #:map-parsed-options
 	   #:getopt
 	   #:with-cli-options
@@ -63,6 +69,102 @@
 		   symbols))
 	 ,@body))
 
+(defun greater (x y &optional (test #'>))
+  (if (funcall test x y)
+      x
+      y))
+
+(defun greatest (list &optional (test #'>))
+  (reduce (lambda (x y)
+	    (greater x y test))
+	  list))
+
+(defun concat (&rest strings)
+  (apply #'concatenate (cons 'string (mapcar #'string strings))))
+
+;; -------- option classes --------
+
+
+(defclass option-spec ()
+  ((short-tokens :accessor short-tokens
+		 :initarg :short-tokens
+		 :initform nil
+		 :documentation "A collection of all short tokens valid for this option")
+   (long-tokens :accessor long-tokens
+		:initarg :long-tokens
+		:initform nil
+		:documentation "A collection of all long tokens valid for this option")
+   (parameter :accessor parameter
+	      :initarg :parameter 
+	      :initform nil
+	      :documentation "A boolean specifiing whether this option takes a parameter.
+                              Can be a string describing the parameter.")
+   (description :accessor description
+		:initarg :description
+		:initform ""
+		:documentation "A description of this option's purpose and usage")))
+
+(defun tokens-from-symbol (symbol)
+  (let* ((long-option (string-downcase (string symbol)))
+	 (short-option (char long-option 0)))
+    (list short-option long-option)))
+		  
+(defun make-option-spec (tokens &optional parameter description)
+  "Creates an option-spec object"
+  (let ((option-spec (make-instance 'option-spec)))
+    (with-slots (short-tokens long-tokens)
+	option-spec
+      (setf (parameter option-spec) parameter)
+      (setf (description option-spec) (or description "An option"))
+      (typecase tokens
+	(list (dolist (token tokens)
+		(typecase token
+		  (character (push token short-tokens))
+		  (string (push token long-tokens))
+		  (t (warn "Bad token: ~A" token))))
+	      (setf short-tokens (nreverse short-tokens))
+	      (setf long-tokens (nreverse long-tokens)))
+	(symbol (destructuring-bind (stoken ltoken)
+		    (tokens-from-symbol tokens)
+		  (push stoken short-tokens)
+		  (push ltoken long-tokens)))
+	(t (warn "Bad token specifier: ~A" tokens))))
+    option-spec))
+
+(defun option-spec-length (option-spec)
+  "Calculates the length of the string necessary to print all of the
+   tokens in a standard fashion"
+  (+ (greater (+ (* 4 (list-length (short-tokens option-spec))) 2) 6)
+     (- (* 4 (list-length (long-tokens option-spec))) 2)
+     (apply #'+ (mapcar #'length (long-tokens option-spec)))
+     (cond ((null (parameter option-spec))
+	    0)
+	   ((stringp (parameter option-spec))
+	    (1+ (length (parameter option-spec))))
+	   (t 10))))
+ 
+(defun option-spec-to-string (option-spec &optional (desc-offset 50))
+  "Returns a human readable string describing the option spec."
+  (format nil (format nil "~A~~~A,2T~A"
+		      "~?~:[~;, ~]~?~A"
+		      (+ desc-offset 2)
+		      (description option-spec))
+	  "  ~:[~;~:*~{-~C~^, ~}~]" (list (short-tokens option-spec))
+	  (and (short-tokens option-spec) (long-tokens option-spec))
+	  "~6,0T~:[~;~:*~{--~A~^, ~}~]" (list (long-tokens option-spec))
+	  (cond ((null (parameter option-spec))
+		 "")
+		((stringp (parameter option-spec))
+		 (concat "=" (string-upcase (parameter option-spec))))
+		(t "=PARAMETER"))))   
+
+(defun add-token (token option)
+  (if (characterp token)
+      (pushnew token (short-tokens option))
+      (pushnew token (long-tokens option))))
+
+;; ------------------------------
+
 (defun cli-options ()
   "list of tokens passed in at the cli"
   #+:sbcl (rest sb-ext:*posix-argv*)
@@ -81,18 +183,6 @@
   #+:cmu (first extensions:*command-line-words*)
   )
 
-(defun greatest (list &key (measure #'identity) (predicate #'>))
-  (reduce (lambda (x y) 
-	    (if (funcall predicate 
-			 (funcall measure x)
-			 (funcall measure y))
-		x
-		y))
-	  list))
-
-(defun concat (&rest strings)
-  (apply #'concatenate (cons 'string (mapcar #'string strings))))
-
 (defun print-usage-summary (description option-specs)
   "Given a description (a control string) and a list of specs for options descriptions
    prints a usage summary. 'Description' is a format control string, which is run
@@ -103,33 +193,17 @@
     parameter   - If true, specifies that this option takes a parameter; parameter type 
                   or description can be specified as a string
     description - A short description of this option"
-  (flet ((pre-form-option-spec (option-spec)
-	   (flet ((to-list (item)
-		    (if (and item (atom item))
-			(list item)
-			item))
-		  (parameter-string (parameter)
-		    (cond ((stringp parameter) (concat "=" parameter))
-			  ((null parameter) "")
-			  (t "=PARAMETER"))))
-	     (let ((so (map 'list #'identity (first option-spec)))
-		   (lo (to-list (second option-spec))))
-	       (list 
-		(format nil "~?~:[~;,~]~?~A" 
-			"  ~:[~;~:*~{-~C~^, ~}~]" (list so)
-			(and so lo)
-			"~6,1T~:[~;~:*~{--~A~^, ~}~]" (list lo)
-			(parameter-string (third option-spec)))
-		(fourth option-spec))))))
-    (let* ((specs (mapcar #'pre-form-option-spec option-specs))
-	   (max-spec-length (length (greatest (mapcar #'first specs) :measure #'length)))
-	   (spec-strings (mapcar (lambda (spec)
-				   (format nil
-					   (concat "~A~" (write-to-string (+ 2 max-spec-length)) "t~A")
-					   (first spec)
-					   (second spec)))
-				 specs)))
-      (format t "~?" description spec-strings))))
+  (let* ((specs (mapcar (lambda (spec)
+			  (typecase spec
+			    (list (apply #'make-option-spec spec))
+			    (symbol (make-option-spec spec))
+			    (option-spec spec)
+			    (t (warn "Invalid Option Spec: ~A" spec))))
+			option-specs))
+	 (max-spec-length (greatest (mapcar #'option-spec-length specs))))
+    (format t "~?" description (mapcar (lambda (spec)
+					 (option-spec-to-string spec max-spec-length))
+				       specs))))
 
 (define-condition bad-option-warning (warning) 
   ((option :initarg :option :reader option)
@@ -192,6 +266,22 @@
 		     (funcall opt-val-func _option (pop cli-options)))))
 		 (t (funcall free-opt-func option)))))))
 
+(defun map-parsed-options-according-to-specs (cli-options option-specs opt-val-func free-opt-func)
+  (let ((bool-options nil)
+	(param-options nil))
+    (flet ((tokens (spec)
+	     (append (mapcar #'string (short-tokens spec))
+		     (long-tokens spec))))
+      (dolist (spec option-specs)
+	(if (parameter spec)
+	    (push (tokens spec) param-options) 
+	    (push (tokens spec) bool-options) ))
+      (map-parsed-options cli-options
+			  (mapcan #'identity bool-options)
+			  (mapcan #'identity param-options)
+			  opt-val-func
+			  free-opt-func))))
+
 (defun alpha-numeric? (char)
   "Returns true if 'char' is a letter of the English alphabet
    or a numerical digit."
@@ -240,6 +330,7 @@
    options are bound to the first listed option variable beginning with that letter, and uppercase short
    options are bound to the second listed option variable beginning with that letter. Variable names imply 
    boolean parameters, unless listed after '&parameters' in which case they are file parameters."
+  
   (let ((bool-options nil)
 	(param-options nil)
 	(var-bindings nil)
@@ -271,7 +362,7 @@
 			       (setf ,symbol value))
 			     var-setters)
 		       (when enable-usage-summary
-			 (push `(,short-option ,long-option ,param-options? ,doc-string) usage-descriptors))
+			 (push `((,(character short-option) ,long-option) ,param-options? ,doc-string) usage-descriptors))
 		       (if param-options?
 			   (progn (push long-option param-options)
 				  (if short-option (push short-option param-options)))
@@ -289,19 +380,14 @@
 		,@body)))
       (if enable-usage-summary
 	  (progn
-	    (let ((print-summary-code `((lambda (enable-usage-summary)
-                                          (when enable-usage-summary
-                                            (print-usage-summary (if (stringp enable-usage-summary) enable-usage-summary
-                                                                      (format nil ,(concat "Usage: "
-                                                                                            "~A"
-                                                                                            " [OPTIONS]... -- "
-                                                                                            (string-upcase (symbol-name free-tokens))
-                                                                                            "~A")
-
-                                                                               (exe-name) "...~%~%~@{~A~%~}~%"))
-                                                                 ',(nreverse (cons '("h" "help" nil "Prints this summary")
-                                                                                   usage-descriptors)))))
-                                        ,enable-usage-summary)))
+	    (let ((print-summary-code `(print-usage-summary ,(if (stringp enable-usage-summary) enable-usage-summary
+								 (concat "Usage: "
+									 (exe-name)
+									 " [OPTIONS]... -- "
+									 (symbol-name free-tokens)
+									 "...~%~%~@{~A~%~}~%"))
+							    ',(nreverse (cons '((#\h "help") nil "Prints this summary")
+									      usage-descriptors)))))
 	      (push "h" bool-options)
 	      (push "help" bool-options)
 	      (push `((or (equal option "help") (equal option "h")) 

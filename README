@@ -162,13 +162,12 @@ print-usage-summary - Prints a usage description of the current program
             
              (short-option(s) long-options(s) parameter description)
 
-             The first item in the list is a string containing all chacters
-             used as short options for a specified option. The second item
-             is either a string or list of strings each containing the name
-             of a possible longform of the same option. The third item is a
-             boolean specifying whether an option takes a parameter. It can
-             be a string arbitrarily specifying some detail of the 
-             parameter. The final item is a description of the option.
+             The first item in the list is a list containing all short
+	     options (as characters) and all long options (as strings.) The
+	     third item is a boolean specifying whether an option takes a
+	     parameter. It can be a string arbitrarily specifying some
+	     detail of the parameter. The final item is a description of the
+	     option.
 
              The function takes each option-spec and generates a string
              describing in detail each option. The resulting strings are
@@ -176,9 +175,9 @@ print-usage-summary - Prints a usage description of the current program
              as the control string.
 
     example: (print-usage-summary "Usage:~%~@{~A~%~}~%end summary"
-                                  '(("a" "alpha" nil "A simple option")
-                                    ("f" "file" "FILENAME" "A filename")
-                                    ("bd" "beta" nil "Another option")))
+                                  '(((#\a "alpha") nil "A simple option")
+                                    ((#\f "file") "FILENAME" "A filename")
+                                    ((#\b #\d "beta") nil "Another option")))
              Usage:
                -a, --alpha          A simple option
                -f, --file=FILENAME  A filename
