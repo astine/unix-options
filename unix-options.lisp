@@ -157,21 +157,10 @@
 		 (concat "=" (string-upcase (parameter option-spec))))
 		(t "=PARAMETER"))))   
 
-(defun print-usage-summary (description)
-  (let ((spec-strings nil))
-    (maphash (lambda (key value)
-	       (declare (ignore key))
-	       (push (option-spec-to-string value) spec-strings))
-	     *option-specs*)
-    (format t description spec-strings)))
-
 (defun add-token (token option)
   (if (characterp token)
       (pushnew token (short-tokens option))
       (pushnew token (long-tokens option))))
-
-(defun get-shortform-tokens (option)
-  (coerce (shortform-tokens option) 'string))
 
 ;; ------------------------------
 
@@ -340,6 +329,7 @@
    options are bound to the first listed option variable beginning with that letter, and uppercase short
    options are bound to the second listed option variable beginning with that letter. Variable names imply 
    boolean parameters, unless listed after '&parameters' in which case they are file parameters."
+  
   (let ((bool-options nil)
 	(param-options nil)
 	(var-bindings nil)
