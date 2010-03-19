@@ -1,4 +1,4 @@
-;;; unix-options (C) 2009 Andrew Stine
+;;; unix-options (C) 2009-2010 Andrew Stine
 
 ;;; This software is distributed under the terms of the Lisp Lesser GNU 
 ;;; Public License (http://opensource.franz.com/preamble.html), also 
@@ -381,86 +381,6 @@
     (if files
 	(reverse (nconc files (list "--")  parsed-options))
 	(reverse parsed-options))))
-
-(defmacro with-cli-options ((&optional (cli-options '(cli-options)) enable-usage-summary) option-variables &body body)
-  "The macro automatically binds passed in command line options to a set of user defined variable names.
-
-   The list 'option-variables' contains a list of names to which 'with-cli-options' can bind the cli
-   options. Any (lowercase) longform option is bound the option-variable of the same name, lowercase short
-   options are bound to the first listed option variable beginning with that letter, and uppercase short
-   options are bound to the second listed option variable beginning with that letter. Variable names imply 
-   boolean parameters, unless listed after '&parameters' in which case they are file parameters."
-  
-  (let ((bool-options nil)
-	(param-options nil)
-	(var-bindings nil)
-	(var-setters nil)
-	(usage-descriptors nil)
-	(param-options? nil)
-	(free-tokens 'free))
-    ;;loop over the symbols in option-variables filling the bool and file parameter lists and
-    ;;generating the code forms for binding and assigning value to the variables
-    (block nil 
-      (dolist (symbol option-variables)
-	(destructuring-bind (symbol &key (doc-string "option") short-option)
-            (ensure-list symbol)
-	  (cond ((eql symbol '&parameters)
-		 (setf param-options? t))
-		((eql symbol '&free)
-		 (setf free-tokens (car (last option-variables)))
-		 (return))
-		(t (flet ((so-not-used? (so) ;'so' = 'short option'
-			    (unless (or (find so bool-options :test #'equal) 
-					(find so param-options :test #'equal))
-			      so)))
-		     (let ((long-option (string-downcase (symbol-name symbol)))
-			   (short-option (or (so-not-used? short-option)
-                                             (so-not-used? (string-downcase (subseq (symbol-name symbol) 0 1)))
-					     (so-not-used? (subseq (string-upcase (symbol-name symbol)) 0 1))))) ;if downcase shortopt is used; attempt upcase one
-		       (push `(,symbol nil) var-bindings)
-		       (push `((or (equal option ,long-option) ,(if short-option `(equal option ,short-option)))
-			       (setf ,symbol value))
-			     var-setters)
-		       (when enable-usage-summary
-			 (push `((,(character short-option) ,long-option) ,param-options? ,doc-string) usage-descriptors))
-		       (if param-options?
-			   (progn (push long-option param-options)
-				  (if short-option (push short-option param-options)))
-			   (progn (push long-option bool-options)
-				  (if short-option (push short-option bool-options)))))))))))
-    (flet ((code ()  ;form the main block of code so it can be optionally wrapping with a handler-case
-	     `(let ,(cons `(,free-tokens nil) var-bindings)
-		(map-parsed-options ,cli-options
-				    ',bool-options ',param-options
-				    (lambda (option value)
-				      (cond ,@var-setters))
-				    (lambda (free-val)
-				      (push free-val ,free-tokens)))
-		(setf ,free-tokens (nreverse ,free-tokens))
-		,@body)))
-      (if enable-usage-summary
-	  (progn
-	    (let ((print-summary-code `(print-usage-summary ,(if (stringp enable-usage-summary) enable-usage-summary
-								 (concat "Usage: "
-									 (exe-name)
-									 " [OPTIONS]... -- "
-									 (symbol-name free-tokens)
-									 "...~%~%~@{~A~%~}~%"))
-							    ',(nreverse (cons '((#\h "help") nil "Prints this summary")
-									      usage-descriptors)))))
-	      (push "h" bool-options)
-	      (push "help" bool-options)
-	      (push `((or (equal option "help") (equal option "h")) 
-		      (progn ,print-summary-code value (return-from with-cli-options))) var-setters)
-	      `(block with-cli-options (handler-case ,(code) (bad-option-warning (c)
-							       (format t "WARNING: ~A: ~A~%~%" (details c) (option c))
-							       ,print-summary-code)))))
-	  (code)))))
-
-
-
-
-
 
 (defmacro with-cli-options ((&optional (cli-options '(cli-options)) enable-usage-summary) option-variables &body body)
   "The macro automatically binds passed in command line options to a set of user defined variable names.
