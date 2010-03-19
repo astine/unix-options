@@ -106,16 +106,16 @@ make-option-spec - A function which create an option-spec object
              option does. The parameter can be described briefly by passing
              a string as parameter rather than simply t. 
 
-            Description is a description of the option and it's purpose in
-            general.
-	     
-            Option-specs are used as parameters to several functions in
-            unix-options. Generally, anywhere an option-spec is required,
-            one may substitute a list of the parameters one would pass to 
-            make-option-spec. Thus one might be able to type:
-            (function '(foo nil "foo option")) instead of:
-            (function (make-option-spec 'foo nil "foo option"))
-	    
+             Description is a description of the option and it's purpose in
+             general.
+     
+             Option-specs are used as parameters to several functions in
+             unix-options. Generally, anywhere an option-spec is required,
+             one may substitute a list of the parameters one would pass to 
+             make-option-spec. Thus one might be able to type:
+             (function '(foo nil "foo option")) instead of:
+             (function (make-option-spec 'foo nil "foo option"))
+    
     example: (make-option-spec '(#\A foo) "integer" "A number to be passed in")
              => <option-spec {12f9sj39}>
              
@@ -141,9 +141,9 @@ with-cli-options - A macro that binds values passed in from the command
              
              Optionally, each entry in option-variables can be a short
              list. The first item is symbol to be used. The second is
-	     either a documentation string, or a full option-spec allowing 
-	     greater detail as to how that particular entry is to be
-	     formed.
+             either a documentation string, or a full option-spec allowing 
+             greater detail as to how that particular entry is to be
+             formed.
 
              In addition, symbols in option-variables are boolean by 
              default; that is, they bound to either t or nil depending on
@@ -195,7 +195,7 @@ print-usage-summary - Prints a usage description of the current program
              describing in detail each option. The resulting strings are
              passed as arguments to a call to format. Description is used
              as the control string. The option-spec descriptions are auto-
-	     aligned.
+             aligned.
 
     example: (print-usage-summary "Usage:~%~@{~A~%~}~%end summary"
                                   '(((#\a "alpha") nil "A simple option")
