@@ -91,31 +91,31 @@ make-option-spec - A function which create an option-spec object
     
     details: Make-option-spec generates an option-spec object from the
              the details provided. Tokens can either be a symbol, or a
-	     list of characters, strings, and symbols. Parameter is either
-	     nil, t, or a string. Description is always a string.
+             list of characters, strings, and symbols. Parameter is either
+             nil, t, or a string. Description is always a string.
 
-	     An option spec contains a list of short-tokens, as characters
-	     and a list of long-tokens as strings. Short-tokens are drawn
-	     from any characters passed under tokens and the first
-	     letter of the name of any symbols passed. Long-tokens are
-	     drawn from any strings passed likewise and from the complete
-	     names of any symbols passed.
+             An option spec contains a list of short-tokens, as characters
+             and a list of long-tokens as strings. Short-tokens are drawn
+             from any characters passed under tokens and the first
+             letter of the name of any symbols passed. Long-tokens are
+             drawn from any strings passed likewise and from the complete
+             names of any symbols passed.
 
-	     Parameter signifies whether an option takes a parameter. If
-	     parameter is nil, then the option does not. Otherwise, the
-	     option does. The parameter can be described briefly by passing
-	     a string as parameter rather than simply t. 
+             Parameter signifies whether an option takes a parameter. If
+             parameter is nil, then the option does not. Otherwise, the
+             option does. The parameter can be described briefly by passing
+             a string as parameter rather than simply t. 
 
-	     Description is a description of the option and it's purpose in
-	     general.
+            Description is a description of the option and it's purpose in
+            general.
 	     
-	     Option-specs are used as parameters to several functions in
-	     unix-options. Generally, anywhere an option-spec is required,
-	     one may substitute a list of the parameters one would pass to 
-	     make-option-spec. Thus one might be able to type:
-	     (function '(foo nil "foo option")) instead of:
-	     (function (make-option-spec 'foo nil "foo option"))
-	     
+            Option-specs are used as parameters to several functions in
+            unix-options. Generally, anywhere an option-spec is required,
+            one may substitute a list of the parameters one would pass to 
+            make-option-spec. Thus one might be able to type:
+            (function '(foo nil "foo option")) instead of:
+            (function (make-option-spec 'foo nil "foo option"))
+	    
     example: (make-option-spec '(#\A foo) "integer" "A number to be passed in")
              => <option-spec {12f9sj39}>
              
