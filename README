@@ -1,4 +1,4 @@
-unix-options (C) 2009 Andrew Stine
+unix-options (C) 2009-2010 Andrew Stine
 
 This software is distributed under the terms of the Lisp Lesser GNU 
 Public License (http://opensource.franz.com/preamble.html), also 
@@ -84,12 +84,46 @@ getopt - An imitation of the Unix 'getopt' command line program
                      "ab"
                      '("file="))
              => '("a" "b" "file" "file.txt" "--" "free")
+	     
+make-option-spec - A function which create an option-spec object
+
+    prototype: (make-option-spec tokens &optional parameter description)
+    
+    details: Make-option-spec generates an option-spec object from the
+             the details provided. Tokens can either be a symbol, or a
+	     list of characters, strings, and symbols. Parameter is either
+	     nil, t, or a string. Description is always a string.
+
+	     An option spec contains a list of short-tokens, as characters
+	     and a list of long-tokens as strings. Short-tokens are drawn
+	     from any characters passed under tokens and the first
+	     letter of the name of any symbols passed. Long-tokens are
+	     drawn from any strings passed likewise and from the complete
+	     names of any symbols passed.
+
+	     Parameter signifies whether an option takes a parameter. If
+	     parameter is nil, then the option does not. Otherwise, the
+	     option does. The parameter can be described briefly by passing
+	     a string as parameter rather than simply t. 
+
+	     Description is a description of the option and it's purpose in
+	     general.
+	     
+	     Option-specs are used as parameters to several functions in
+	     unix-options. Generally, anywhere an option-spec is required,
+	     one may substitute a list of the parameters one would pass to 
+	     make-option-spec. Thus one might be able to type:
+	     (function '(foo nil "foo option")) instead of:
+	     (function (make-option-spec 'foo nil "foo option"))
+	     
+    example: (make-option-spec '(#\A foo) "integer" "A number to be passed in")
+             => <option-spec {12f9sj39}>
              
 
 with-cli-options - A macro that binds values passed in from the command
                    line to local variables
 
-    prototype:  (with-cli-options (&optional (cli-options '(cli-options))
+    prototype: (with-cli-options (&optional (cli-options '(cli-options))
                                              enable-usage-summary)
                                   option-variables &body body)
                                   
@@ -106,12 +140,10 @@ with-cli-options - A macro that binds values passed in from the command
              more must use a long option.
              
              Optionally, each entry in option-variables can be a short
-             lambda-list. The first item is symbol to be used. Two keyword
-             parameters, doc-string and short-option, are also available
-             and allow the use to specify a usage description and explicit
-             short option respectively. If short-option is specified, it
-             supercedes any attempt to derive the short option for the
-             symbol name.
+             list. The first item is symbol to be used. The second is
+	     either a documentation string, or a full option-spec allowing 
+	     greater detail as to how that particular entry is to be
+	     formed.
 
              In addition, symbols in option-variables are boolean by 
              default; that is, they bound to either t or nil depending on
@@ -157,22 +189,13 @@ print-usage-summary - Prints a usage description of the current program
     prototype: (print-usage-summary description option-specs)
 
     details: Print-usage-summary print a usage summary of options specified
-             by options-specs. Each member of the list option-specs is a
-             list of specs of the following form:
-            
-             (short-option(s) long-options(s) parameter description)
-
-             The first item in the list is a list containing all short
-	     options (as characters) and all long options (as strings.) The
-	     third item is a boolean specifying whether an option takes a
-	     parameter. It can be a string arbitrarily specifying some
-	     detail of the parameter. The final item is a description of the
-	     option.
+             by options-specs.
 
              The function takes each option-spec and generates a string
              describing in detail each option. The resulting strings are
              passed as arguments to a call to format. Description is used
-             as the control string.
+             as the control string. The option-spec descriptions are auto-
+	     aligned.
 
     example: (print-usage-summary "Usage:~%~@{~A~%~}~%end summary"
                                   '(((#\a "alpha") nil "A simple option")

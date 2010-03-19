@@ -1,4 +1,4 @@
-;;; unix-options (C) 2009 Andrew Stine
+;;; unix-options (C) 2009-2010 Andrew Stine
 
 ;;; This software is distributed under the terms of the Lisp Lesser GNU 
 ;;; Public License (http://opensource.franz.com/preamble.html), also 
@@ -15,6 +15,6 @@
 ;;; ----------------------------------------------------------------------
 
 (asdf:defsystem #:unix-options
-  :version "0.2.4"
+  :version "0.3.1"
   :serial t
   :components ((:file "unix-options")))
