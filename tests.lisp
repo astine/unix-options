@@ -105,7 +105,6 @@
     (is (equal (long-tokens os5) '("delta")))
     (is (equal (parameter os5) nil))
     (is (equal (description os5) "quux"))))
-	
 
 (test print-usage-summary-test
   (is (equal
@@ -173,6 +172,23 @@ Usage: /usr/bin/sbcl [OPTIONS]... -- FREE...
 "Usage: /usr/bin/sbcl [OPTIONS]... -- FREE...
 
   -h, --help  Prints this summary
+
+"))
+    (is (equal
+	 (with-output-to-string (*standard-output*)
+	   (with-cli-options ('("-h") t) 
+               (alpha beta (grue (("grue" #\R)))
+                      &parameters 
+                      (file (file "PATH-TO-FILE" "File to frob"))
+                      (frob (frob "mode" "Frobbing mode")))))
+"Usage: /usr/bin/sbcl [OPTIONS]... -- FREE...
+
+  -a, --alpha              An option
+  -b, --beta               An option
+  -R, --grue               An option
+  -f, --file=PATH-TO-FILE  File to frob
+  -F, --frob=MODE          Frobbing mode
+  -h, --help               Prints this summary
 
 "))
     (setf (fdefinition 'cli-options) orig-cli-options)))

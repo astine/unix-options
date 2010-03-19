@@ -15,7 +15,7 @@
 ;;; ----------------------------------------------------------------------
 
 (defpackage #:unix-options
-  (:use #:cl)
+    (:use #:cl)
   (:export #:cli-options
 	   #:exe-name
            #:&parameters
@@ -30,6 +30,7 @@
 	   #:map-parsed-options
 	   #:getopt
 	   #:with-cli-options
+           #:*default-usage-format-string*
 	   #:print-usage-summary))
 
 (in-package #:unix-options)
@@ -39,6 +40,8 @@
 ;;options:    arguments that can be passed in
 ;;parameters: arguments that take a value
 ;;free args:  free tokens not associated with any option
+
+(defvar *default-usage-format-string* "~%~%~@{~A~%~}~%")
 
 (eval-when (:compile-toplevel :load-toplevel)
   (defun ensure-list (val)
@@ -103,6 +106,11 @@
       (char-downcase char)
       (char-upcase char)))
 
+(defun split-string (char string)
+  (let ((pos (position char string)))
+    (cons (subseq string 0 pos)
+          (when pos (split-string char (subseq string (1+ pos)))))))
+
 ;; -------- option classes --------
 
 (defclass option-spec ()
@@ -137,7 +145,7 @@
 	option-spec
       (flet ((push-symbol (symbol)
 	       (destructuring-bind (stoken ltoken)
-		   (tokens-from-symbol token)
+		   (tokens-from-symbol symbol)
 		 (push stoken short-tokens)
 		 (push ltoken long-tokens))))
 	(setf (parameter option-spec) parameter)
@@ -153,7 +161,7 @@
 		(setf long-tokens (nreverse long-tokens)))
 	  (symbol (push-symbol tokens))
 	  (t (warn "Bad token specifier: ~A" tokens))))
-      option-spec))
+      option-spec)))
 
 (defun ensure-option-spec (spec)
   (typecase spec 
@@ -194,10 +202,10 @@
  
 (defun option-spec-to-string (option-spec &optional (desc-offset 50))
   "Returns a human readable string describing the option spec."
-  (format nil (format nil "~A~~~A,2T~A"
+  (format nil (format nil "~A~~~A,2T~<~@{~A~^ ~:_~}~:>"
 		      "~?~:[~;, ~]~?~A"
 		      (+ desc-offset 2)
-		      (description option-spec))
+		      (split-string #\Space (description option-spec)))
 	  "  ~:[~;~:*~{-~C~^, ~}~]" (list (short-tokens option-spec))
 	  (and (short-tokens option-spec) (long-tokens option-spec))
 	  "~6,0T~:[~;~:*~{--~A~^, ~}~]" (list (long-tokens option-spec))
@@ -383,13 +391,38 @@
 	(reverse parsed-options))))
 
 (defmacro with-cli-options ((&optional (cli-options '(cli-options)) enable-usage-summary) option-variables &body body)
-  "The macro automatically binds passed in command line options to a set of user defined variable names.
+"The macro automatically binds passed in command line options to a set of user defined variable names,
+following the usual GNU conventions.
 
-   The list 'option-variables' contains a list of names to which 'with-cli-options' can bind the cli
-   options. Any (lowercase) longform option is bound the option-variable of the same name, lowercase short
-   options are bound to the first listed option variable beginning with that letter, and uppercase short
-   options are bound to the second listed option variable beginning with that letter. Variable names imply 
-   boolean parameters, unless listed after '&parameters' in which case they are file parameters."
+OPTION-VARIABLES is a lambda list, similar to a macro lambda list, of the form:
+
+\({option-variable}* [&parameters {option-variable}*] [&free free-token])
+
+Each OPTION-VARIABLE is either a symbol or a lambda list of the form:
+
+\(symbol &optional option-spec) 
+
+The variable SYMBOL specifies the name of a value to be bound to some value passed in on the cli.
+The symbol will be bound to the value of the parsed option, (either as a boolean representing 
+whether the option was passed, or as a string, representing the parameter passed, if the option
+take parameters,) within the body of WITH-CLI-OPTIONS.
+
+OPTION-SPEC is either an optional option-spec object, which defines how the tokens should be
+interpreted to bind this value, or a list that defines one. If option spec is omitted, an
+option-spec object is generated internally for this value, using the variable name (SYMBOL) as a
+long-form token and the first letter as a short-form token. If the lowercase of the short-form
+token is already taken, then the capital version is used. If this is also taken, the option will
+have no default short-form token.
+
+Alternatively, one may pass a string as OPTION-SPEC, in which case, the optoin-spec object will
+still be generated from SYMBOL, but will use the string as the option description.
+
+Option-variables listed after the &PARAMETERS modifier will be set as options which take a
+parameter, unless overridden with an explicitly passed option-spec object.
+
+Lastly, if the &FREE modifier is specified, it should be followed by exactly one symbol, which
+will be used as the name of the variable to be bound to the list of free tokens encountered after
+all other options."
   (let ((var-bindings nil)
 	(var-setters nil)
 	(param-options? nil)
@@ -433,11 +466,14 @@
 								 (concat "Usage: "
 									 (exe-name)
 									 " [OPTIONS]... -- "
-									 (symbol-name free-tokens)
-									 "...~%~%~@{~A~%~}~%"))
+									 (string-upcase (string free-tokens))
+									 "..."
+									 *default-usage-format-string*))
 							    ',(reverse option-specs))))
 	      (push `((token? option ,(first option-specs))
-		      (progn ,print-summary-code value (return-from with-cli-options))) var-setters)
+		      (progn ,print-summary-code value
+			     (return-from with-cli-options)))
+		    var-setters)
 	      `(block with-cli-options (handler-case ,(code) (bad-option-warning (c)
 							       (format t "WARNING: ~A: ~A~%~%" (details c) (option c))
 							       ,print-summary-code)))))
