@@ -38,7 +38,7 @@
 ;;tokens:     space separated items passed in on the command line
 ;;options:    arguments that can be passed in
 ;;parameters: arguments that take a value
-;;free args:  free arguments not associated with any parameter
+;;free args:  free tokens not associated with any option
 
 (eval-when (:compile-toplevel :load-toplevel)
   (defun ensure-list (val)
@@ -82,8 +82,28 @@
 (defun concat (&rest strings)
   (apply #'concatenate (cons 'string (mapcar #'string strings))))
 
-;; -------- option classes --------
+(defun filter (function list)
+  "Filters a list removing all element for which function returns nil"
+  (cond ((null list) nil)
+	((funcall function (first list))
+	 (cons (first list) (filter function (rest list))))
+	(t (filter function (rest list)))))
 
+(defun alpha-numeric? (char)
+  "Returns true if 'char' is a letter of the English alphabet
+   or a numerical digit."
+  (let ((code (char-code char)))
+    (or (and (> code 47) (< code 58))
+	(and (> code 64) (< code 91))
+	(and (> code 96) (< code 123)))))
+
+(defun toggle-case (char)
+  "Reverses the case of a character"
+  (if (upper-case-p char)
+      (char-downcase char)
+      (char-upcase char)))
+
+;; -------- option classes --------
 
 (defclass option-spec ()
   ((short-tokens :accessor short-tokens
@@ -99,12 +119,13 @@
 	      :initform nil
 	      :documentation "A boolean specifiing whether this option takes a parameter.
                               Can be a string describing the parameter.")
-   (description :accessor description
+   (description :accessor description ;TODO: add hooks into documentation
 		:initarg :description
 		:initform ""
 		:documentation "A description of this option's purpose and usage")))
 
 (defun tokens-from-symbol (symbol)
+  "Returns a lowercase name of symbol and the lowercase first letter of that name"
   (let* ((long-option (string-downcase (string symbol)))
 	 (short-option (char long-option 0)))
     (list short-option long-option)))
@@ -114,22 +135,50 @@
   (let ((option-spec (make-instance 'option-spec)))
     (with-slots (short-tokens long-tokens)
 	option-spec
-      (setf (parameter option-spec) parameter)
-      (setf (description option-spec) (or description "An option"))
-      (typecase tokens
-	(list (dolist (token tokens)
-		(typecase token
-		  (character (push token short-tokens))
-		  (string (push token long-tokens))
-		  (t (warn "Bad token: ~A" token))))
-	      (setf short-tokens (nreverse short-tokens))
-	      (setf long-tokens (nreverse long-tokens)))
-	(symbol (destructuring-bind (stoken ltoken)
-		    (tokens-from-symbol tokens)
-		  (push stoken short-tokens)
-		  (push ltoken long-tokens)))
-	(t (warn "Bad token specifier: ~A" tokens))))
-    option-spec))
+      (flet ((push-symbol (symbol)
+	       (destructuring-bind (stoken ltoken)
+		   (tokens-from-symbol token)
+		 (push stoken short-tokens)
+		 (push ltoken long-tokens))))
+	(setf (parameter option-spec) parameter)
+	(setf (description option-spec) (or description "An option"))
+	(typecase tokens
+	  (list (dolist (token tokens)
+		  (typecase token
+		    (character (push token short-tokens))
+		    (string (push token long-tokens))
+		    (symbol (push-symbol token))
+		    (t (warn "Bad token: ~A" token))))
+		(setf short-tokens (nreverse short-tokens))
+		(setf long-tokens (nreverse long-tokens)))
+	  (symbol (push-symbol tokens))
+	  (t (warn "Bad token specifier: ~A" tokens))))
+      option-spec))
+
+(defun ensure-option-spec (spec)
+  (typecase spec 
+    (list (apply #'make-option-spec spec))
+    (symbol (make-option-spec spec))
+    (option-spec spec)
+    (t (warn "Invalid Option Spec: ~A" spec))))
+
+(defun tokens (option-spec)
+  "Returns all tokens of option-spec"
+  (append (mapcar #'string (short-tokens option-spec))
+	  (long-tokens option-spec)))
+
+(defun token? (token option-spec)
+  "Tests if token is in option spec"
+  (member token (tokens option-spec) :test #'equal))
+
+(macrolet ((def-all-lists (name function items)
+	     `(defun ,name (,items)
+		(mapcan #'copy-list (mapcar ,function ,items)))))
+
+  (def-all-lists all-tokens #'tokens option-specs)
+  (def-all-lists all-short-tokens #'short-tokens option-specs)
+  (def-all-lists all-long-tokens #'long-tokens option-specs)
+  )
 
 (defun option-spec-length (option-spec)
   "Calculates the length of the string necessary to print all of the
@@ -163,6 +212,47 @@
       (pushnew token (short-tokens option))
       (pushnew token (long-tokens option))))
 
+(defun divide-tokens (option-specs)
+  "Takes a list of option specifications and returns two lists
+   of tokens: one from boolean option specs and one from parameter
+   option specs"
+  (let ((bool-tokens nil)
+	(param-tokens nil))
+    (dolist (spec option-specs)
+      (if (parameter spec)
+	  (setf param-tokens
+		(append (tokens spec)
+			param-tokens))
+	  (setf bool-tokens
+		(append (tokens spec)
+			bool-tokens))))
+    (values bool-tokens param-tokens)))
+
+(defun make-normalized-option-spec (new-spec option-specs)
+  "Checks the tokens of new-spec against the tokens in option-specs
+   and changes or removes them to avoid conflicts"
+  (let ((spec (ensure-option-spec new-spec))
+	(used-short-tokens (all-short-tokens option-specs))
+	(used-long-tokens (all-long-tokens option-specs)))
+    (flet ((not-member (item list &key (test #'eql))
+	     (unless (member item list :test test)
+	       item)))
+      (setf (short-tokens spec)
+	    (filter #'identity
+		    (mapcar (lambda (token)
+			      (or (not-member token used-short-tokens)
+				  (not-member (toggle-case token) used-short-tokens)))
+			    (short-tokens spec))))
+      (setf (long-tokens spec)
+	    (filter (lambda (token)
+		      (not (member token used-long-tokens :test #'equal)))
+		    (long-tokens spec)))
+      spec)))
+
+(defmacro add-option-spec (new-spec option-specs)
+  `(push (make-normalized-option-spec ,new-spec ,option-specs)
+	 ,option-specs))
+
 ;; ------------------------------
 
 (defun cli-options ()
@@ -193,13 +283,7 @@
     parameter   - If true, specifies that this option takes a parameter; parameter type 
                   or description can be specified as a string
     description - A short description of this option"
-  (let* ((specs (mapcar (lambda (spec)
-			  (typecase spec
-			    (list (apply #'make-option-spec spec))
-			    (symbol (make-option-spec spec))
-			    (option-spec spec)
-			    (t (warn "Invalid Option Spec: ~A" spec))))
-			option-specs))
+  (let* ((specs (mapcar #'ensure-option-spec option-specs))
 	 (max-spec-length (greatest (mapcar #'option-spec-length specs))))
     (format t "~?" description (mapcar (lambda (spec)
 					 (option-spec-to-string spec max-spec-length))
@@ -265,30 +349,6 @@
 		     (funcall opt-val-func _option t)
 		     (funcall opt-val-func _option (pop cli-options)))))
 		 (t (funcall free-opt-func option)))))))
-
-(defun map-parsed-options-according-to-specs (cli-options option-specs opt-val-func free-opt-func)
-  (let ((bool-options nil)
-	(param-options nil))
-    (flet ((tokens (spec)
-	     (append (mapcar #'string (short-tokens spec))
-		     (long-tokens spec))))
-      (dolist (spec option-specs)
-	(if (parameter spec)
-	    (push (tokens spec) param-options) 
-	    (push (tokens spec) bool-options) ))
-      (map-parsed-options cli-options
-			  (mapcan #'identity bool-options)
-			  (mapcan #'identity param-options)
-			  opt-val-func
-			  free-opt-func))))
-
-(defun alpha-numeric? (char)
-  "Returns true if 'char' is a letter of the English alphabet
-   or a numerical digit."
-  (let ((code (char-code char)))
-    (or (and (> code 47) (< code 58))
-	(and (> code 64) (< code 91))
-	(and (> code 96) (< code 123)))))
 
 (defun getopt (cli-options shortopts longopts)
   "A more traditional command line option parser of a similar
@@ -391,6 +451,72 @@
 	      (push "h" bool-options)
 	      (push "help" bool-options)
 	      (push `((or (equal option "help") (equal option "h")) 
+		      (progn ,print-summary-code value (return-from with-cli-options))) var-setters)
+	      `(block with-cli-options (handler-case ,(code) (bad-option-warning (c)
+							       (format t "WARNING: ~A: ~A~%~%" (details c) (option c))
+							       ,print-summary-code)))))
+	  (code)))))
+
+
+
+
+
+
+(defmacro with-cli-options ((&optional (cli-options '(cli-options)) enable-usage-summary) option-variables &body body)
+  "The macro automatically binds passed in command line options to a set of user defined variable names.
+
+   The list 'option-variables' contains a list of names to which 'with-cli-options' can bind the cli
+   options. Any (lowercase) longform option is bound the option-variable of the same name, lowercase short
+   options are bound to the first listed option variable beginning with that letter, and uppercase short
+   options are bound to the second listed option variable beginning with that letter. Variable names imply 
+   boolean parameters, unless listed after '&parameters' in which case they are file parameters."
+  (let ((var-bindings nil)
+	(var-setters nil)
+	(param-options? nil)
+	(free-tokens 'free)
+	(option-specs nil))
+    ;;loop over symbols and lists in option-variables, generating option specifications and
+    ;;forms for binding and assigned value to the variables
+    (block nil 
+      (dolist (option-v option-variables)
+	(destructuring-bind (symbol &optional option-spec)
+            (ensure-list option-v)
+	  (case symbol
+	    (&parameters (setf param-options? t))
+	    (&free (setf free-tokens (car (last option-variables)))
+		   (return))
+	    (otherwise
+	     (add-option-spec (cond ((or (null option-spec) (stringp option-spec))
+				     (make-option-spec symbol param-options? option-spec))
+				    (t (ensure-option-spec option-spec)))
+			      option-specs)
+	     (push `(,symbol nil) var-bindings)
+	     (push `((token? option ,(first option-specs))
+		     (setf ,symbol value))
+		   var-setters))))))
+    (flet ((code ()  ;form the main block of code so it can be optionally wrapped with a handler-case
+	     (multiple-value-bind (bool-options param-options)
+		 (divide-tokens option-specs)
+	       `(let ,(cons `(,free-tokens nil) var-bindings)
+		  (map-parsed-options ,cli-options
+				      ',bool-options ',param-options
+				      (lambda (option value)
+					(cond ,@var-setters))
+				      (lambda (free-val)
+					(push free-val ,free-tokens)))
+		  (setf ,free-tokens (nreverse ,free-tokens))
+		  ,@body))))
+      (if enable-usage-summary
+	  (progn
+	    (push (make-option-spec '(#\h "help") nil "Prints this summary") option-specs)
+	    (let ((print-summary-code `(print-usage-summary ,(if (stringp enable-usage-summary) enable-usage-summary
+								 (concat "Usage: "
+									 (exe-name)
+									 " [OPTIONS]... -- "
+									 (symbol-name free-tokens)
+									 "...~%~%~@{~A~%~}~%"))
+							    ',(reverse option-specs))))
+	      (push `((token? option ,(first option-specs))
 		      (progn ,print-summary-code value (return-from with-cli-options))) var-setters)
 	      `(block with-cli-options (handler-case ,(code) (bad-option-warning (c)
 							       (format t "WARNING: ~A: ~A~%~%" (details c) (option c))
