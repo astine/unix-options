@@ -270,6 +270,7 @@
   #+:clisp (rest ext:*args*)
   #+:lispworks (rest system:*line-arguments-list*)
   #+:cmu (rest extensions:*command-line-words*)
+  #+:ecl (rest (ext:command-args))
  )
 
 (defun exe-name ()
@@ -279,6 +280,7 @@
   #+:clisp (first ext:*args*)
   #+:lispworks (first system:*line-arguments-list*)
   #+:cmu (first extensions:*command-line-words*)
+  #+:ecl (first (ext:command-args))
   )
 
 (defun print-usage-summary (description option-specs)
