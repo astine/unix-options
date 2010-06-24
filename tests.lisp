@@ -63,9 +63,12 @@
       (is (equal files '("hello" "hello" "ab"))))))
 
 (test getopt-test
-  (is (equal (getopt '("-afgo.txt" "--alpha" "stay.txt" "--file" "return.txt" "loop.txt")
+  (multiple-value-bind (parsed options free-tokens)
+      (getopt '("-afgo.txt" "--alpha" "stay.txt" "--file" "return.txt" "loop.txt")
 		     "af:j" '("alpha" "file="))
-	     '("a" "f" "go.txt" "alpha" "file" "return.txt" "--" "stay.txt" "loop.txt")))
+    (is (equal parsed '("a" "f" "go.txt" "alpha" "file" "return.txt" "--" "stay.txt" "loop.txt")))
+    (is (equal options '("a" "f" "go.txt" "alpha" "file" "return.txt")))
+    (is (equal free-tokens '("stay.txt" "loop.txt"))))
   (is (equal (getopt '("-fago.txt" "--alpha" "--" "--file" "return.txt")
 		     "af:j" '("alpha" "file="))
 	     '("f" "ago.txt" "alpha" "--" "--file" "return.txt")))

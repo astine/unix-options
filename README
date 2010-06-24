@@ -80,11 +80,18 @@ getopt - An imitation of the Unix 'getopt' command line program
              string is the name of a long option and a '=' signifies
              that the option takes a parameter.
 
+	     Return three values which are all lists: (1) parsed command
+	     line arguments with "--" separating valid options and free
+	     arguments, (2) only the valid options and (3) only the free
+	     arguments.
+
     example: (getopt '("-ab" "--file" "file.txt" "free")
                      "ab"
                      '("file="))
-             => '("a" "b" "file" "file.txt" "--" "free")
-	     
+             => ("a" "b" "file" "file.txt" "--" "free")
+                ("a" "b" "file" "file.txt")
+                ("free")
+
 make-option-spec - A function which create an option-spec object
 
     prototype: (make-option-spec tokens &optional parameter description)

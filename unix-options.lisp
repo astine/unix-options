@@ -361,11 +361,20 @@
 		 (t (funcall free-opt-func option)))))))
 
 (defun getopt (cli-options shortopts longopts)
-  "A more traditional command line option parser of a similar
-   general format as getopt from the Unix cli, invoked as such:
-   *cli-options* = '(\"-afgo.txt\" \"--alpha\" \"stay.txt\" \"--file\" \"return.txt\" \"loop.txt\")
-   (getopts *cli-options* \"af:j\" '(\"alpha\" \"file=\")
-   =>  '(\"a\" \"f\" \"go.txt\" \"alpha\" \"file\" \"return.txt\" \"--\" \"stay.txt\" \"loop.txt\") "
+  "A traditional command-line option parser of a similar general format
+as getopt from the Unix cli. Return three values which are all
+lists: (1) parsed command-line arguments with \"--\" separating the
+valid options and free arguments, (2) only the valid options and (3)
+only the free arguments. For example:
+
+  *cli-options* = '(\"-afgo.txt\" \"--alpha\" \"stay.txt\"
+                    \"--file\" \"return.txt\" \"loop.txt\")
+
+  (getopts *cli-options* \"af:j\" '(\"alpha\" \"file=\")
+   => (\"a\" \"f\" \"go.txt\" \"alpha\" \"file\" \"return.txt\" \"--\"
+       \"stay.txt\" \"loop.txt\")
+      (\"a\" \"f\" \"go.txt\" \"alpha\" \"file\" \"return.txt\")
+      (\"stay.txt\" \"loop.txt\")"
   (let ((bool-options nil)
 	(param-options nil)
 	(files nil)
@@ -388,9 +397,13 @@
 			      (push value parsed-options)))
 			#'(lambda (option)
 			    (push option files)))
-    (if files
-	(reverse (nconc files (list "--")  parsed-options))
-	(reverse parsed-options))))
+    (setf parsed-options (nreverse parsed-options)
+          files (nreverse files))
+    (values (if files
+                (append parsed-options (list "--") files)
+                parsed-options)
+            parsed-options
+            files)))
 
 (defmacro with-cli-options ((&optional (cli-options '(cli-options)) enable-usage-summary) option-variables &body body)
 "The macro automatically binds passed in command line options to a set of user defined variable names,
