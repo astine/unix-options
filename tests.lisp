@@ -161,7 +161,7 @@ sample")))
 	   (with-cli-options ('("-x") t) ()))
 "WARNING: Invalid option: x
 
-Usage: /usr/bin/sbcl [OPTIONS]... -- FREE...
+Usage: sbcl [OPTIONS]... -- FREE...
 
   -h, --help  Prints this summary
 
@@ -169,7 +169,7 @@ Usage: /usr/bin/sbcl [OPTIONS]... -- FREE...
     (is (equal
 	 (with-output-to-string (*standard-output*)
 	   (with-cli-options ('("-h") t) ()))
-"Usage: /usr/bin/sbcl [OPTIONS]... -- FREE...
+"Usage: sbcl [OPTIONS]... -- FREE...
 
   -h, --help  Prints this summary
 
@@ -181,7 +181,7 @@ Usage: /usr/bin/sbcl [OPTIONS]... -- FREE...
                       &parameters 
                       (file (file "PATH-TO-FILE" "File to frob"))
                       (frob (frob "mode" "Frobbing mode")))))
-"Usage: /usr/bin/sbcl [OPTIONS]... -- FREE...
+"Usage: sbcl [OPTIONS]... -- FREE...
 
   -a, --alpha              An option
   -b, --beta               An option
