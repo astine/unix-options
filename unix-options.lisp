@@ -132,6 +132,15 @@
 		:initform ""
 		:documentation "A description of this option's purpose and usage")))
 
+(defmethod make-load-form ((option-spec option-spec) &optional environment)
+  ;Defining this method seems necessary to get option-spec to play well with ASDF
+  (declare (ignore environment))
+  `(make-instance ',(class-of option-spec)
+		  :short-tokens ',(short-tokens option-spec)
+		  :long-tokens ',(long-tokens option-spec)
+		  :parameter ',(parameter option-spec)
+		  :description ',(description option-spec)))
+
 (defun tokens-from-symbol (symbol)
   "Returns a lowercase name of symbol and the lowercase first letter of that name"
   (let* ((long-option (string-downcase (string symbol)))
