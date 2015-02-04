@@ -66,7 +66,7 @@ getopt - An imitation of the Unix 'getopt' command line program
              handled by the calling program more easily.
  
              Cli-options can be any list of strings. Each string
-             begging with a single '-' is interpreted as a series of
+             beginning with a single '-' is interpreted as a series of
              short options and any beginning with '--' is interpreted
              as a long option. Others are either free tokens or
              parameters. Any tokens appearing after a token that is
@@ -153,11 +153,11 @@ with-cli-options - A macro that binds values passed in from the command
              formed.
 
              In addition, symbols in option-variables are boolean by 
-             default; that is, they bound to either t or nil depending on
-             whether they are passed in on the cli. Symbols listed after
-             &parameters, if it is present, are are considered parameter
-             options, that is, they are bound to the next token on the cli
-             if the are long options or the same or the rest of the
+             default; that is, they are ound to either t or nil depending on
+             whether they are passed in on the CLI. Symbols listed after
+             &parameters, if it is present, are considered parameter
+             options, that is, they are bound to the next token on the CLI
+             if they are long options or the same or the rest of the
              current short option group, if they are short options. If
              nothing is passed for this options (ie. if it is the last
              token) it is bound to nil.
@@ -171,7 +171,7 @@ with-cli-options - A macro that binds values passed in from the command
              able to print out a usage summary (using print-usage-summary)
              based on the options bound in option-varibles. The summary
              will be printed either when an invalid option is specified or
-             the user uses '-h' or '--help' as an option. If
+             when the user uses '-h' or '--help' as an option. If
              enable-usage-summary is set to a string, that string is passed
              as control string to print-usage-summary. Else, a generic
              string is used.
@@ -195,11 +195,11 @@ print-usage-summary - Prints a usage description of the current program
 
     prototype: (print-usage-summary description option-specs)
 
-    details: Print-usage-summary print a usage summary of options specified
+    details: Print-usage-summary prints a summary of options specified
              by options-specs.
 
              The function takes each option-spec and generates a string
-             describing in detail each option. The resulting strings are
+             describing each option in detail. The resulting strings are
              passed as arguments to a call to format. Description is used
              as the control string. The option-spec descriptions are auto-
              aligned.
@@ -216,15 +216,15 @@ print-usage-summary - Prints a usage description of the current program
              end summary
              =>NIL
 
-map-parsed-options - Function that does the actual parsing of cli tokens
+map-parsed-options - Function that does the actual parsing of CLI tokens
 
     prototype: (map-parsed-options cli-options bool-options param-options
                                    opt-val-func free-val-func)
 
     details: Map-parsed-options is the backend function that does most
-             of the actual work in parsing cli functions. It is exposed
+             of the actual work in parsing CLI functions. It is exposed
              to allow more front ends in addition to getopt and
-             with-cli-options. Map-parsed-options receives a list of cli
+             with-cli-options. Map-parsed-options receives a list of CLI
              tokens, as well as two list of options, boolean options and
              options with parameters, respectively. The final two
              arguments are functions, one to handle found options and
