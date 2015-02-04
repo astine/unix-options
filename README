@@ -153,7 +153,7 @@ with-cli-options - A macro that binds values passed in from the command
              formed.
 
              In addition, symbols in option-variables are boolean by 
-             default; that is, they are ound to either t or nil depending on
+             default; that is, they are bound to either t or nil depending on
              whether they are passed in on the CLI. Symbols listed after
              &parameters, if it is present, are considered parameter
              options, that is, they are bound to the next token on the CLI
