@@ -339,7 +339,7 @@
 			(t (warn 'bad-option-warning :option _option :details "Invalid option"))))))
     (loop while cli-options do                        ;;loop over the tokens
 	 (let ((option (pop cli-options)))
-	   (cond ((equal option "--")
+	   (cond ((equal option "--") ;; '--' indicates that all other tokens should be interpreted as free args.
 		  (dolist (option cli-options)
 		    (funcall free-opt-func option))
 		  (return))
