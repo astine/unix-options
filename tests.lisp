@@ -80,7 +80,12 @@
 	     '("a" "j" "afgo.txt" "--" "stay.txt" "return.txt")))
   (let ((cli-options '("-ab" "--file" "file.txt" "file2.txt")))
     (is (equal (getopt cli-options "abcf" '("file="))
-	       '("a" "b" "file" "file.txt" "--" "file2.txt")))))
+	       '("a" "b" "file" "file.txt" "--" "file2.txt"))))
+  (multiple-value-bind (parsed options free-tokens)
+      (getopt '("-") "af:j" '("alpha" "file="))
+    (is (equal parsed '("--" "-")))
+    (is (equal options '()))
+    (is (equal free-tokens '("-")))))
 
 (test make-option-spec-test
   (let ((os1 (make-option-spec 'alpha))
