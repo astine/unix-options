@@ -343,6 +343,8 @@
 		  (dolist (option cli-options)
 		    (funcall free-opt-func option))
 		  (return))
+                 ((equal option "-") ;; a single hyphen is interpreted as a free arg
+                  (funcall free-opt-func option))
 		 ((and (equal (char option 0) #\-) ;;if short option(s) '-a' or '-asd'
 		       (not (equal (char option 1) #\-)))
 		  (doseq (char (subseq option 1)) ;;a set of short options is broken up and looped over separately
