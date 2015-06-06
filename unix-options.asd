@@ -17,4 +17,7 @@
 (asdf:defsystem #:unix-options
   :version "0.3.1"
   :serial t
+  :description "Easy to use command line option parser"
+  :author "Andrew Stine stine.drew@gmail.com"
+  :license "LLGPL"
   :components ((:file "unix-options")))
