@@ -125,7 +125,7 @@
    (parameter :accessor parameter
 	      :initarg :parameter 
 	      :initform nil
-	      :documentation "A boolean specifiing whether this option takes a parameter.
+	      :documentation "A boolean specifying whether this option takes a parameter.
                               Can be a string describing the parameter.")
    (description :accessor description ;TODO: add hooks into documentation
 		:initarg :description
